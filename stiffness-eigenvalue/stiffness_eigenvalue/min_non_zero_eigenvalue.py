@@ -5,6 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import rigidpy as rp
 import math
+import time
 
 # 極小正数
 eps = 10**(-15)
@@ -21,10 +22,9 @@ def non_zero_eigenvalue(L, v0):
   # 最適化の実行（目的関数のマイナスの値を最小化問題に）
   solution = minimize(obj_func, v0)
   # 結果の表示（固有ベクトルはおｋ、結果は負の逆数を取って元の最小非ゼロ固有値を求めるようにしている。）
-  
-  print('Optimal solution:', solution.x)
-  print('non-zero-eigenvalue:', 1/(-solution.fun))
-  return solution.fun, solution.x
+  # print('Optimal solution:', solution.x)
+  # print('non-zero-eigenvalue:', 1/(-solution.fun))
+  return 1/(-solution.fun), solution.x
 
 # 簡単な半正定値行列でテスト（固有値があっているかも確認する固有値は8と1なので1が出力されてほしい）
 def test_1():
@@ -87,7 +87,7 @@ def test_3():
   custom_visualize(F)
 
 # フレームワークの可視化用
-def custom_visualize(framework):
+def custom_visualize(framework, limit=False):
   fig, ax = plt.subplots()
   ax.scatter(framework.coordinates[:,0], framework.coordinates[:,1], c='blue')
   
@@ -103,7 +103,13 @@ def custom_visualize(framework):
   plt.ylabel('Y')
   plt.title('Custom Visualization of the Framework')
   fig.canvas.mpl_connect("key_press_event", on_key)
-  plt.show()
+  plt.show(block=False)
+  if limit:
+    plt.show(block=False)
+    time.sleep(10)
+    plt.close(fig)
+  else:
+    plt.show()
 
 def on_key(event):
   if event.key == 'enter':
