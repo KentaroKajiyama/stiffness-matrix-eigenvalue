@@ -1,37 +1,114 @@
 import numpy as np
 from scipy.optimize import minimize
 from functools import partial
+import networkx as nx
+import matplotlib.pyplot as plt
+import rigidpy as rp
+import math
 
 # 極小正数
 eps = 10**(-15)
-# 目的関数
+# 目的関数（最小化問題にするために係数に-をつけている）
 def objective(v,L):
   if np.linalg.norm(v) <= eps:
     return 0
   else:
-    return np.dot(v.T, v) / np.dot(v.T, np.dot(L, v)) 
+    return -np.dot(v.T, v) / np.dot(v.T, np.dot(L, v)) 
 
 def non_zero_eigenvalue(L, v0):
   # 目的関数
   obj_func = partial(objective, L=L)
-  # 最適化の実行
+  # 最適化の実行（目的関数のマイナスの値を最小化問題に）
   solution = minimize(obj_func, v0)
-  # 結果の表示
+  # 結果の表示（固有ベクトルはおｋ、結果は負の逆数を取って元の最小非ゼロ固有値を求めるようにしている。）
+  
   print('Optimal solution:', solution.x)
-  print('Objective value:', solution.fun)
+  print('non-zero-eigenvalue:', 1/(-solution.fun))
   return solution.fun, solution.x
 
+# 簡単な半正定値行列でテスト（固有値があっているかも確認する固有値は8と1なので1が出力されてほしい）
 def test_1():
-  R = 10*np.random.randn(6,4)
-  L = R @ R.T
-  v0 = np.ones(6)/6
-  eps = 1
+  L = np.array([[2,-1,0],[-1,2,-1],[0,-1,2]])
+  v0 = np.array([9,1,1])/3
   print("L:",L)
-  print("L+eps*np.eye(6)", L+eps*np.eye(6))
-  eigen_val, eigen_vec = non_zero_eigenvalue(L+eps*np.eye(6), v0)
+  eigen_val, eigen_vec = non_zero_eigenvalue(L, v0)
 
+# 完全グラフでテスト
 def test_2():
-  pass
+  # 各定数
+  eps = 1
+  d = 2
+  V = 5
+  # 完全グラフの生成
+  G_comp = nx.complete_graph(5)
+  # position of sites
+  coordinates = 5*np.random.randn(d*V).reshape(-1,d)
+  print("coordinates:", coordinates)
+  # list of sites between sites
+  bonds = np.array(list(G_comp.edges()))
+  print("bonds:", bonds)
+  # create a Framework object
+  F = rp.framework(coordinates, bonds)
+  # calculate the rigidity matrix
+  R = F.rigidityMatrix().T
+  L = R @ R.T
+  # 初期固有ベクトル
+  v0 = 3*np.random.randn(d*V)
+  print("v0:",v0)
+  stiff_approx_matrix = L+eps*np.eye(d*V)
+  eigen_val, eigen_vec = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  custom_visualize(F)
 
+# k-random-regularグラフでテスト
+def test_3():
+  # 各定数
+  eps = 1
+  d = 2
+  k = 3
+  V = 8
+  # k-regular graphの生成
+  G_regular = nx.random_regular_graph(k,V)
+  # position of sites
+  coordinates = 5*np.random.randn(d*V).reshape(-1,d)
+  print("coordinates:", coordinates)
+  # list of sites between sites
+  bonds = np.array(list(G_regular.edges()))
+  print("bonds:", bonds)
+  # create a Framework object
+  F = rp.framework(coordinates, bonds)
+  # calculate the rigidity matrix
+  R = F.rigidityMatrix().T
+  L = R @ R.T
+  # 初期固有ベクトル
+  v0 = 3*np.random.randn(d*V)
+  print("v0:",v0)
+  stiff_approx_matrix = L+eps*np.eye(d*V)
+  eigen_val, eigen_vec = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  custom_visualize(F)
+
+# フレームワークの可視化用
+def custom_visualize(framework):
+  fig, ax = plt.subplots()
+  ax.scatter(framework.coordinates[:,0], framework.coordinates[:,1], c='blue')
+  
+  for bond in framework.bonds:
+    start, end = framework.coordinates[bond]
+    ax.plot([start[0], end[0]], [start[1], end[1]], 'k-')
+  
+  # 固定された節点を赤色で表示
+  for pin in framework.pins:
+    ax.scatter(framework.coordinates[pin,0], framework.coordinates[pin,1], c='red', marker='D')
+  
+  plt.xlabel('X')
+  plt.ylabel('Y')
+  plt.title('Custom Visualization of the Framework')
+  fig.canvas.mpl_connect("key_press_event", on_key)
+  plt.show()
+
+def on_key(event):
+  if event.key == 'enter':
+    plt.close(event.canvas.figure)
+
+# regularグラフでテスト
 if __name__ == "__main__":
   test_1()

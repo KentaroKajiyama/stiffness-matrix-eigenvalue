@@ -497,6 +497,17 @@ files = [
 six = ">=1.5"
 
 [[package]]
+name = "rigidpy"
+version = "0.0.8"
+description = "rigidpy package for rigidity analysis"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "rigidpy-0.0.8-py3-none-any.whl", hash = "sha256:81630b2b2d69702b9c71e3bbee0604380eda79a48787bc235fdd87f8f4efcccd"},
+    {file = "rigidpy-0.0.8.tar.gz", hash = "sha256:55c7eba7ef112342cc8b7b7c9eb30b238418303c18f27fbd86b3b940b9018a4a"},
+]
+
+[[package]]
 name = "scipy"
 version = "1.13.1"
 description = "Fundamental algorithms for scientific computing in Python"
@@ -552,4 +563,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10.11"
-content-hash = "33440485e50845e997f63a78885920441f0e731e55e83b1fa087cd19e9553eef"
+content-hash = "0ea6b041062253ade39423f776b0ee57fcff4706fdb1dfa5023ab0e7f5672cb8"
