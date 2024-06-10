@@ -6,7 +6,7 @@ from functools import partial
 eps = 10**(-15)
 # 目的関数
 def objective(v,L):
-  if np.norm(v) <= eps:
+  if np.linalg.norm(v) <= eps:
     return 0
   else:
     return np.dot(v.T, v) / np.dot(v.T, np.dot(L, v)) 
@@ -21,3 +21,17 @@ def non_zero_eigenvalue(L, v0):
   print('Objective value:', solution.fun)
   return solution.fun, solution.x
 
+def test_1():
+  R = 10*np.random.randn(6,4)
+  L = R @ R.T
+  v0 = np.ones(6)/6
+  eps = 1
+  print("L:",L)
+  print("L+eps*np.eye(6)", L+eps*np.eye(6))
+  eigen_val, eigen_vec = non_zero_eigenvalue(L+eps*np.eye(6), v0)
+
+def test_2():
+  pass
+
+if __name__ == "__main__":
+  test_1()
