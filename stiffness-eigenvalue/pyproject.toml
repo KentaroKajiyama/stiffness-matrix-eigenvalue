@@ -6,7 +6,11 @@ authors = ["KentaroKajiyama <kemushi555@icloud.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.10.11"
+numpy = "^1.26.4"
+matplotlib = "^3.9.0"
+scipy = "^1.13.1"
+networkx = "^3.3"
 
 
 [build-system]
