@@ -85,7 +85,7 @@ def test_complete():
   p = 5*np.random.randn(d*V).reshape(-1,d)
   # 初期固有ベクトル
   v0 = 3*np.random.randn(d*V)
-  p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_comp, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True)
+  p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_comp, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True, visual_frame=True)
   print("eigen_val:", eigen_val)
 
 if __name__=="__main__":
