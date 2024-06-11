@@ -41,7 +41,7 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
     L_approx = L + eps*np.eye(dim*V)
     eigen_val, eigen_vec = non_zero_eigenvalue(L_approx,eigen_vec)
     # realizationの更新
-    p += alpha*np.copy(eigen_vec).reshape(-1,dim)
+    p -= alpha*np.copy(eigen_vec).reshape(-1,dim)
     # 固有値の格納
     eigen_vals.append(eigen_val)
     eigen_vecs.append(eigen_vecs)
@@ -85,8 +85,24 @@ def test_complete():
   p = 5*np.random.randn(d*V).reshape(-1,d)
   # 初期固有ベクトル
   v0 = 3*np.random.randn(d*V)
-  p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_comp, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True, visual_frame=True)
+  p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_comp, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True)
+  print("eigen_val:", eigen_val)
+
+# k-random-regularグラフでテスト
+def test_regular():
+  # 各定数
+  eps = 1
+  d = 2
+  k = 3
+  V = 8
+  # 完全グラフの生成
+  G_regular = nx.random_regular_graph(k,V)
+  # position of sites
+  p = 5*np.random.randn(d*V).reshape(-1,d)
+  # 初期固有ベクトル
+  v0 = 3*np.random.randn(d*V)
+  p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_regular, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True)
   print("eigen_val:", eigen_val)
 
 if __name__=="__main__":
-  test_complete()
+  test_regular()
