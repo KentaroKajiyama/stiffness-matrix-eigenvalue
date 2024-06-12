@@ -15,10 +15,44 @@ def objective(v,L):
     return 0
   else:
     return -np.dot(v.T, v) / np.dot(v.T, np.dot(L, v)) 
+# 目的関数の勾配（係数に-をつけた目的関数の勾配)
+def objective_grad(v, L):
+  if np.linalg.norm(v) <= eps:
+    return np.zeros_like(v)
+  else:
+    numerator = -2 * v / np.dot(v.T, np.dot(L, v))
+    denominator = 2 * np.dot(v.T, v) * np.dot(L, v) / (np.dot(v.T, np.dot(L, v)) ** 2)
+    return numerator + denominator
 
+# ライブラリが上手く動かないので手動で再急降下法を実装
+# Armijo条件を使用して学習率を調整
+def armijo_line_search(v, L, grad, alpha=1.0, beta=0.8, sigma=1e-4):
+  while objective(v - alpha * grad, L) > objective(v, L) - sigma * alpha * np.dot(grad.T, grad):
+    alpha *= beta
+  return alpha
+
+# 再急降下法
+def gradient_descent(v_init, L, max_iter=2000, tol=1e-10):
+  v = v_init
+  print("v_init:", v_init)
+  print("L:",L)
+  for i in range(max_iter):
+    grad = objective_grad(v, L)
+    # print("gradient_descent_iteration:",i)
+    alpha = armijo_line_search(v, L, grad)  # Armijo条件に基づく学習率の決定
+    v_new = v - alpha * grad
+    # 収束判定
+    if np.linalg.norm(v_new - v) < tol:
+      print(f"Converged at iteration {i}")
+      break
+    v = v_new
+  print("v:",v)
+  return -1/objective(v,L), v
+# ライブラリが上手く動かない
 def non_zero_eigenvalue(L, v0):
   # 目的関数
   obj_func = partial(objective, L=L)
+  # grad_func = partial(objective_grad, L=L)
   # 最適化の実行（目的関数のマイナスの値を最小化問題に）
   solution = minimize(obj_func, v0)
   # 結果の表示（固有ベクトルはおｋ、結果は負の逆数を取って元の最小非ゼロ固有値を求めるようにしている。）
@@ -31,7 +65,12 @@ def test_1():
   L = np.array([[2,-1,0],[-1,2,-1],[0,-1,2]])
   v0 = np.array([9,1,1])/3
   print("L:",L)
-  eigen_val, eigen_vec = non_zero_eigenvalue(L, v0)
+  eigen_val_lib, eigen_vec_lib = non_zero_eigenvalue(L, v0)
+  eigen_val_hand, eigen_vec_hand = gradient_descent(v0, L)
+  print("eigen_val_lib:", eigen_val_lib)
+  print("eigen_val_hand:", eigen_val_hand)
+  print("eigen_vec_lib:", eigen_vec_lib)
+  print("eigen_vec_hand:", eigen_vec_hand)
 
 # 完全グラフでテスト
 def test_2():
@@ -56,7 +95,13 @@ def test_2():
   v0 = 3*np.random.randn(d*V)
   print("v0:",v0)
   stiff_approx_matrix = L+eps*np.eye(d*V)
-  eigen_val, eigen_vec = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  eigen_val_lib, eigen_vec_lib = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  eigen_val_hand, eigen_vec_hand = gradient_descent(v0, stiff_approx_matrix)
+  print("eigen_val_lib:", eigen_val_lib)
+  print("eigen_val_hand:", eigen_val_hand)
+  print("eigen_vec_lib:", eigen_vec_lib)
+  print("eigen_vec_hand:", eigen_vec_hand)
+
   custom_visualize(F)
 
 # k-random-regularグラフでテスト
@@ -83,7 +128,12 @@ def test_3():
   v0 = 3*np.random.randn(d*V)
   print("v0:",v0)
   stiff_approx_matrix = L+eps*np.eye(d*V)
-  eigen_val, eigen_vec = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  eigen_val_lib, eigen_vec_lib = non_zero_eigenvalue(stiff_approx_matrix, v0)
+  eigen_val_hand, eigen_vec_hand = gradient_descent(v0, stiff_approx_matrix)
+  print("eigen_val_lib:", eigen_val_lib)
+  print("eigen_val_hand:", eigen_val_hand)
+  print("eigen_vec_lib:", eigen_vec_lib)
+  print("eigen_vec_hand:", eigen_vec_hand)
   custom_visualize(F)
 
 # フレームワークの可視化用
@@ -117,4 +167,4 @@ def on_key(event):
 
 # regularグラフでテスト
 if __name__ == "__main__":
-  test_1()
+  test_3()

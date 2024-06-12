@@ -1,5 +1,5 @@
 import numpy as np
-from min_non_zero_eigenvalue import non_zero_eigenvalue
+from min_non_zero_eigenvalue import non_zero_eigenvalue, gradient_descent
 import rigidpy as rp
 import matplotlib.pyplot as plt
 import time
@@ -10,7 +10,7 @@ from min_non_zero_eigenvalue import custom_visualize
 def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
   # 最大繰り返し回数
-  MAX_ITER = 100
+  MAX_ITER = 3
   # 移動分の係数
   alpha = 0.2
   # realization,固有値の格納（格納する固有値は初回を含めて100回分）
@@ -39,12 +39,14 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
     L = R @ R.T
     # Approximate stiffness matrix
     L_approx = L + eps*np.eye(dim*V)
-    eigen_val, eigen_vec = non_zero_eigenvalue(L_approx,eigen_vec)
+    eigen_val, eigen_vec = non_zero_eigenvalue(L_approx, eigen_vec)
     # realizationの更新
     p -= alpha*np.copy(eigen_vec).reshape(-1,dim)
     # 固有値の格納
     eigen_vals.append(eigen_val)
-    eigen_vecs.append(eigen_vecs)
+    eigen_vecs.append(eigen_vec)
+    # フレームワークの削除
+    del F
   # 最大値を取るインデックス
   max_index = np.argmax(eigen_vals)
   # visual = Trueの場合に固有値の推移の様子をプロットする。
@@ -91,16 +93,27 @@ def test_complete():
 # k-random-regularグラフでテスト
 def test_regular():
   # 各定数
-  eps = 1
+  eps = 0.5
   d = 2
-  k = 3
-  V = 8
+  k = 5
+  n = 12
   # 完全グラフの生成
-  G_regular = nx.random_regular_graph(k,V)
+  G_regular = nx.random_regular_graph(k,n)
   # position of sites
-  p = 5*np.random.randn(d*V).reshape(-1,d)
+  p = np.array([[220.26468935,142.08279461],
+  [222.47367594, 133.31886717],
+  [221.2007659,  146.26178173],
+  [232.05277869, 127.71005911],
+  [231.23487978, 145.55315542],
+  [225.1127207,  139.77029442],
+  [217.60549425, 147.38141886],
+  [219.40312948, 136.5095388 ],
+  [217.61356694, 140.03527164],
+  [210.29054027, 128.6630659 ],
+  [228.35735623, 131.02726757],
+  [227.59364421, 147.54974161]])
   # 初期固有ベクトル
-  v0 = 3*np.random.randn(d*V)
+  v0 = 3*np.random.randn(d*n)
   p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_regular, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True)
   print("eigen_val:", eigen_val)
 
