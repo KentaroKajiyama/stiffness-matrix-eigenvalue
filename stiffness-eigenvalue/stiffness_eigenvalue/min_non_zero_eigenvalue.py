@@ -93,11 +93,8 @@ def test_2():
   print("v0:",v0)
   stiff_approx_matrix = L+eps*np.eye(d*V)
   eigen_val_lib, eigen_vec_lib = non_zero_eigenvalue(stiff_approx_matrix, v0)
-  eigen_val_hand, eigen_vec_hand = gradient_descent(v0, stiff_approx_matrix)
   print("eigen_val_lib:", eigen_val_lib)
-  print("eigen_val_hand:", eigen_val_hand)
   print("eigen_vec_lib:", eigen_vec_lib)
-  print("eigen_vec_hand:", eigen_vec_hand)
 
   custom_visualize(F)
 
