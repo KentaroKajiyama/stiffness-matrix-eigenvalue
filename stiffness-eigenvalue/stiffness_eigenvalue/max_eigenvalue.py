@@ -58,7 +58,7 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
 def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
   # 最大繰り返し回数
-  MAX_ITER = 100
+  MAX_ITER = 1000
   # 移動分の係数
   alpha = 0.2
   # realization,固有値の格納（格納する固有値は初回を含めて100回分）
@@ -108,6 +108,8 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, vis
   # visual = Trueの場合に固有値の推移の様子をプロットする。
   if visual_eigen:
     plot_eigen_vals(eigen_val_box)
+    F = rp.framework(p_box[max_index], bonds)
+    custom_visualize(F)
   return p_box[max_index], eigen_val_box[max_index], eigen_vec_box[max_index]
 # 固有値のプロット
 def plot_eigen_vals(eigen_vals, limit=False):
@@ -132,7 +134,7 @@ def on_key(event):
 
 # 完全グラフでテスト
 def test_complete():
-  np.random.seed(1)
+  # np.random.seed(1)
   # 各定数
   eps = 1
   d = 2
