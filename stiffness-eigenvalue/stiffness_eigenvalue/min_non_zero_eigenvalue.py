@@ -15,6 +15,15 @@ def objective(v,L):
     return 0
   else:
     return -np.dot(v.T, v) / np.dot(v.T, np.dot(L, v)) 
+# ライブラリ
+def non_zero_eigenvalue(L, v0):
+  # 目的関数
+  obj_func = partial(objective, L=L)
+  # 最適化の実行（目的関数のマイナスの値を最小化問題に）
+  solution = minimize(obj_func, v0)
+  # 結果の表示（固有ベクトルはおｋ、結果は負の逆数を取って元の最小非ゼロ固有値を求めるようにしている。）
+  return 1/(-solution.fun), solution.x
+
 # 目的関数の勾配（係数に-をつけた目的関数の勾配)
 def objective_grad(v, L):
   if np.linalg.norm(v) <= eps:
@@ -38,7 +47,6 @@ def gradient_descent(v_init, L, max_iter=1000, tol=1e-6):
   print("L:",L)
   for i in range(max_iter):
     grad = objective_grad(v, L)
-    # print("gradient_descent_iteration:",i)
     alpha = armijo_line_search(v, L, grad)  # Armijo条件に基づく学習率の決定
     v_new = v - alpha * grad
     # 収束判定
@@ -48,17 +56,6 @@ def gradient_descent(v_init, L, max_iter=1000, tol=1e-6):
     v = v_new
   print("v:",v)
   return -1/objective(v,L), v
-# ライブラリが上手く動かない
-def non_zero_eigenvalue(L, v0):
-  # 目的関数
-  obj_func = partial(objective, L=L)
-  # grad_func = partial(objective_grad, L=L)
-  # 最適化の実行（目的関数のマイナスの値を最小化問題に）
-  solution = minimize(obj_func, v0)
-  # 結果の表示（固有ベクトルはおｋ、結果は負の逆数を取って元の最小非ゼロ固有値を求めるようにしている。）
-  # print('Optimal solution:', solution.x)
-  # print('non-zero-eigenvalue:', 1/(-solution.fun))
-  return 1/(-solution.fun), solution.x
 
 # 簡単な半正定値行列でテスト（固有値があっているかも確認する固有値は8と1なので1が出力されてほしい）
 def test_1():
