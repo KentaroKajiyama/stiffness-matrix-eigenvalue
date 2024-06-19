@@ -79,10 +79,8 @@ def test_2():
   G_comp = nx.complete_graph(5)
   # position of sites
   coordinates = 5*np.random.randn(d*V).reshape(-1,d)
-  print("coordinates:", coordinates)
   # list of sites between sites
   bonds = np.array(list(G_comp.edges()))
-  print("bonds:", bonds)
   # create a Framework object
   F = rp.framework(coordinates, bonds)
   # calculate the rigidity matrix
@@ -90,13 +88,8 @@ def test_2():
   L = R @ R.T
   # 初期固有ベクトル
   v0 = 3*np.random.randn(d*V)
-  print("v0:",v0)
   stiff_approx_matrix = L+eps*np.eye(d*V)
   eigen_val_lib, eigen_vec_lib = non_zero_eigenvalue(stiff_approx_matrix, v0)
-  print("eigen_val_lib:", eigen_val_lib)
-  print("eigen_vec_lib:", eigen_vec_lib)
-
-  custom_visualize(F)
 
 # k-random-regularグラフでテスト
 def test_3():
