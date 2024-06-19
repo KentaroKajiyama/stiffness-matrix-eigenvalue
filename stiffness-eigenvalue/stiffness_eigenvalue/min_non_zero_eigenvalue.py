@@ -32,7 +32,7 @@ def armijo_line_search(v, L, grad, alpha=1.0, beta=0.8, sigma=1e-4):
   return alpha
 
 # 再急降下法
-def gradient_descent(v_init, L, max_iter=2000, tol=1e-10):
+def gradient_descent(v_init, L, max_iter=1000, tol=1e-6):
   v = v_init
   print("v_init:", v_init)
   print("L:",L)

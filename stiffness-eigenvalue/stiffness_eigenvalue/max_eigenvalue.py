@@ -10,7 +10,7 @@ from min_non_zero_eigenvalue import custom_visualize
 def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
   # 最大繰り返し回数
-  MAX_ITER = 3
+  MAX_ITER = 100
   # 移動分の係数
   alpha = 0.2
   # realization,固有値の格納（格納する固有値は初回を含めて100回分）
