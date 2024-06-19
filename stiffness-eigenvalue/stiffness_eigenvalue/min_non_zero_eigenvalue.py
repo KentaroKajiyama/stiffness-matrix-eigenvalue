@@ -33,6 +33,7 @@ def objective_grad(v, L):
     denominator = 2 * np.dot(v.T, v) * np.dot(L, v) / (np.dot(v.T, np.dot(L, v)) ** 2)
     return numerator + denominator
 
+
 # ライブラリが上手く動かないので手動で再急降下法を実装
 # Armijo条件を使用して学習率を調整
 def armijo_line_search(v, L, grad, alpha=1.0, beta=0.8, sigma=1e-4):
@@ -70,11 +71,11 @@ def test_1():
   print("eigen_vec_hand:", eigen_vec_hand)
 
 # 完全グラフでテスト
-def test_2():
+def test_2(dim, size_n):
   # 各定数
   eps = 1
-  d = 2
-  V = 5
+  d = dim
+  V = size_n
   # 完全グラフの生成
   G_comp = nx.complete_graph(5)
   # position of sites
@@ -147,11 +148,11 @@ def custom_visualize(framework, limit=False):
     plt.close(fig)
   else:
     plt.show()
-
+# グラフを閉じる用
 def on_key(event):
   if event.key == 'enter':
     plt.close(event.canvas.figure)
-
-# regularグラフでテスト
+# 時間の計測
+# テスト実行用
 if __name__ == "__main__":
   test_3()
