@@ -6,13 +6,65 @@ import time
 import networkx as nx
 from min_non_zero_eigenvalue import custom_visualize
 
+def pseudo_armijo(alpha, dim, p, bonds):
+  MAX_DIVIDE = 20; time =0
+  c1 = 0.1
+  F = rp.framework(p, bonds)
+  # Rigidity matrix
+  R = F.rigidityMatrix().T
+  # Stiffness matrix
+  L = R @ R.T
+  # Eigenvalues
+  eigen_vals, eigen_vecs = np.linalg.eig(L)
+  # Sort eigenvalues and eigenvectors in the decending order.
+  sorted_indices = np.argsort(eigen_vals)
+  eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
+  # d=2 4th minimum eigenvalue
+  fourth_smallest_eigenvalue = eigen_vals[3]
+  fourth_smallest_eigenvector = eigen_vecs[:, 3].real
+  # eigenvalueの方向±どっち？
+  p_after = p-alpha*fourth_smallest_eigenvector.reshape(-1, dim)
+  F_after = rp.framework(p_after, bonds)
+  # Rigidity matrix
+  R_after = F_after.rigidityMatrix().T
+  # Stiffness matrix
+  L_after = R_after @ R_after.T
+  # Eigenvalues
+  eigen_vals, eigen_vecs = np.linalg.eig(L_after)
+  # Sort eigenvalues and eigenvectors in the decending order.
+  sorted_indices = np.argsort(eigen_vals)
+  eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
+  # d=2 4th minimum eigenvalue
+  fourth_smallest_eigenvalue_after = eigen_vals[3]
+  fourth_smallest_eigenvector_after = eigen_vecs[:, 3].real
+  cd = fourth_smallest_eigenvalue + c1*alpha*np.dot(fourth_smallest_eigenvector, p.flatten()) - fourth_smallest_eigenvalue_after
+  while(cd>0 and time < MAX_DIVIDE):
+    alpha /= 2
+    # eigenvalueの方向±どっち？
+    p_after = p-alpha*fourth_smallest_eigenvector.reshape(-1,dim)
+    F_after = rp.framework(p_after, bonds)
+    # Rigidity matrix
+    R_after = F_after.rigidityMatrix().T
+    # Stiffness matrix
+    L_after = R_after @ R_after.T
+    # Eigenvalues
+    eigen_vals, eigen_vecs = np.linalg.eig(L_after)
+    # Sort eigenvalues and eigenvectors in the decending order.
+    sorted_indices = np.argsort(eigen_vals)
+    eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
+    # d=2 4th minimum eigenvalue
+    fourth_smallest_eigenvalue_after = eigen_vals[3]
+    fourth_smallest_eigenvector_after = eigen_vecs[:, 3].real
+    cd = fourth_smallest_eigenvalue + c1*alpha*np.dot(fourth_smallest_eigenvector, p.flatten()) - fourth_smallest_eigenvalue_after
+    time +=1
+  return alpha
 # G:k-regular graph, p:realization, eps: 近似する際のeps
 def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
   # 最大繰り返し回数
   MAX_ITER = 100
   # 移動分の係数
-  alpha = 0.2
+  alpha = 1
   # realization,固有値の格納（格納する固有値は初回を含めて100回分）
   p_box = []
   eigen_vals = []
@@ -29,6 +81,8 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
   for i in range(MAX_ITER):
     # realizationの格納
     p_box.append(p)
+    alpha = pseudo_armijo(alpha, dim, p, bonds)
+    print("alpha:",alpha)
     # framework
     F = rp.framework(p, bonds)
     if visual_frame:
@@ -58,11 +112,10 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
 def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
   # 最大繰り返し回数
-  MAX_ITER = 1000
-  # 移動分の係数
-  alpha = 0.2
+  MAX_ITER = 3000
   # realization,固有値の格納（格納する固有値は初回を含めて100回分）
   p_box = []
+  alpha_box = []
   eigen_val_box = []
   eigen_vec_box = []
   # 次元 dim
@@ -74,10 +127,16 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, vis
   bonds = np.array(list(G_regular.edges()))
   # 固有ベクトルの初期化
   eigen_vec = eigen_vec_0
+  # pの正規化
+  p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
   for i in range(MAX_ITER):
     # realizationの格納
     p_box.append(p)
+    # 移動分の係数
+    alpha = 1
+    alpha = pseudo_armijo(alpha, dim, p, bonds)
+    alpha_box.append(alpha)
     # framework
     F = rp.framework(p, bonds)
     if visual_frame:
@@ -98,6 +157,8 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, vis
     print("fourth_smallest_eigenvector:", fourth_smallest_eigenvector)
     # realizationの更新
     p -= alpha*np.copy(fourth_smallest_eigenvector).reshape(-1,dim)
+    p = p/np.linalg.norm(p)
+    print(np.linalg.norm(p))
     # 固有値の格納
     eigen_val_box.append(fourth_smallest_eigenvalue)
     eigen_vec_box.append(fourth_smallest_eigenvector)
@@ -108,7 +169,10 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, vis
   # visual = Trueの場合に固有値の推移の様子をプロットする。
   if visual_eigen:
     plot_eigen_vals(eigen_val_box)
+    plot_alpha(alpha_box)
     F = rp.framework(p_box[max_index], bonds)
+    custom_visualize(F)
+    F = rp.framework(p_box[len(p_box)-1], bonds)
     custom_visualize(F)
   return p_box[max_index], eigen_val_box[max_index], eigen_vec_box[max_index]
 # 固有値のプロット
@@ -126,7 +190,21 @@ def plot_eigen_vals(eigen_vals, limit=False):
     plt.close(fig)
   else:
     plt.show()
-
+# alphaのプロット
+def plot_alpha(alpha_box, limit=False):
+  fig = plt.figure(figsize=(6,4))
+  ax1 = fig.add_subplot(1,1,1)
+  ax1.plot(alpha_box, label="alpha")
+  ax1.set_xlabel("index")
+  ax1.set_ylabel("alpha")
+  ax1.legend(loc="best")
+  fig.canvas.mpl_connect("key_press_event", on_key)
+  if limit:
+    plt.show(block=False)
+    time.sleep(10)
+    plt.close(fig)
+  else:
+    plt.show()
 # Enterを押した際にfigureを消去
 def on_key(event):
   if event.key == "enter":
@@ -143,9 +221,18 @@ def test_complete():
   G_comp = nx.complete_graph(V)
   # position of sites
   p = 5*np.random.randn(d*V).reshape(-1,d)
+  # 円周上においてテスト 
+  theta = np.linspace(0, 2 * np.pi, V+1)[:V]
+  x_unit_circle = np.cos(theta).reshape(-1,1)
+  y_unit_circle = np.sin(theta).reshape(-1,1)
+  p_circle = np.hstack((x_unit_circle, y_unit_circle))
+  p_circle[9,0] = 0.5
+  p_circle[9,1] = 0.5 
   # 初期固有ベクトル
   v0 = 3*np.random.randn(d*V)
   p, eigen_val, eigen_vec = max_p_eigenvalue_lib(G_regular=G_comp, p=p, eigen_vec_0= v0, eps=eps,visual_eigen=True)
+  # テスト
+  # p_circle, eigen_val, eigen_vec = max_p_eigenvalue_lib(G_regular=G_comp, p=p_circle, eigen_vec_0= v0, eps=eps,visual_eigen=True)
 
 # k-random-regularグラフでテスト
 def test_regular():

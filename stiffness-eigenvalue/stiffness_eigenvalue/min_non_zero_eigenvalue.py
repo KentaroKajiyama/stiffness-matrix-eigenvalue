@@ -129,6 +129,21 @@ def custom_visualize(framework, limit=False):
   fig, ax = plt.subplots()
   ax.scatter(framework.coordinates[:,0], framework.coordinates[:,1], c='blue')
   
+  # プロットの設定
+  # ax.gca().set_aspect('equal', adjustable='box')
+  ax.axhline(0, color='grey', linewidth=0.5)
+  ax.axvline(0, color='grey', linewidth=0.5)
+  ax.grid(True, linestyle='--', alpha=0.7)
+  # 単位円のプロット
+  # 単位円のデータを生成
+  theta = np.linspace(0, 2 * np.pi, 100)
+  # x_unit_circle = np.cos(theta)
+  # y_unit_circle = np.sin(theta)
+  # ax.plot(x_unit_circle, y_unit_circle, label='Unit Circle (r=1)')
+  # 半径を2倍、3倍した円のデータを生成
+  radii = [0.3, 0.6]
+  circles = [(r * np.cos(theta), r * np.sin(theta)) for r in radii]
+  
   for bond in framework.bonds:
     start, end = framework.coordinates[bond]
     ax.plot([start[0], end[0]], [start[1], end[1]], 'k-')
@@ -136,30 +151,15 @@ def custom_visualize(framework, limit=False):
   # 固定された節点を赤色で表示
   for pin in framework.pins:
     ax.scatter(framework.coordinates[pin,0], framework.coordinates[pin,1], c='red', marker='D')
-  # 単位円のプロット
-  # 単位円のデータを生成
-  theta = np.linspace(0, 2 * np.pi, 100)
-  x_unit_circle = np.cos(theta)
-  y_unit_circle = np.sin(theta)
-  ax.plot(x_unit_circle, y_unit_circle, label='Unit Circle (r=1)')
 
 # 他の円をプロット
   for i, (x, y) in enumerate(circles):
     ax.plot(x, y, label=f'Circle (r={radii[i]})')
-
-  # プロットの設定
-  ax.gca().set_aspect('equal', adjustable='box')
-  ax.axhline(0, color='grey', linewidth=0.5)
-  ax.axvline(0, color='grey', linewidth=0.5)
-  ax.grid(True, linestyle='--', alpha=0.7)
-  # 半径を2倍、3倍した円のデータを生成
-  radii = [2, 3]
-  circles = [(r * np.cos(theta), r * np.sin(theta)) for r in radii]
-  print("circles:", circles)
   
   plt.xlabel('X')
   plt.ylabel('Y')
   plt.title('Custom Visualization of the Framework')
+  plt.legend(loc="best")
   fig.canvas.mpl_connect("key_press_event", on_key)
   plt.show(block=False)
   if limit:
