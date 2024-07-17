@@ -125,7 +125,7 @@ def test_3():
   custom_visualize(F)
 
 # フレームワークの可視化用
-def custom_visualize(framework, limit=False):
+def custom_visualize(framework,label, limit=False):
   fig, ax = plt.subplots()
   ax.scatter(framework.coordinates[:,0], framework.coordinates[:,1], c='blue')
   
@@ -158,7 +158,7 @@ def custom_visualize(framework, limit=False):
   
   plt.xlabel('X')
   plt.ylabel('Y')
-  plt.title('Custom Visualization of the Framework')
+  plt.title("Custom Visualization of the Framework, {}".format(label))
   plt.legend(loc="best")
   fig.canvas.mpl_connect("key_press_event", on_key)
   plt.show(block=False)

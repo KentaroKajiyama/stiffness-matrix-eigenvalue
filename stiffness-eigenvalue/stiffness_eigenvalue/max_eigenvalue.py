@@ -6,9 +6,47 @@ import time
 import networkx as nx
 from min_non_zero_eigenvalue import custom_visualize
 
+def pseudo_descent_dir(p, bonds, eigenvector, dim, epsilon=0.0000001):
+  # +の場合
+  p_plus = p - epsilon*eigenvector.reshape(-1, dim)
+  # フレームワーク・剛性行列の作成
+  F_plus = rp.framework(p_plus, bonds)
+  # Rigidity matrix
+  R_plus = F_plus.rigidityMatrix().T
+  # Stiffness matrix
+  L_plus = R_plus @ R_plus.T
+  # Eigenvalues
+  eigen_vals_plus, eigen_vecs_plus = np.linalg.eig(L_plus)
+  # Sort eigenvalues and eigenvectors in the decending order.
+  sorted_indices_plus = np.argsort(eigen_vals_plus)
+  eigen_vals_plus = eigen_vals_plus[sorted_indices_plus]
+  # -の場合
+  p_minus = p - epsilon*eigenvector.reshape(-1, dim)
+  # フレームワーク・剛性行列の作成
+  F_minus = rp.framework(p_minus, bonds)
+  # Rigidity matrix
+  R_minus = F_minus.rigidityMatrix().T
+  # Stiffness matrix
+  L_minus = R_minus @ R_minus.T
+  # Eigenvalues
+  eigen_vals_minus, eigen_vecs_minus = np.linalg.eig(L_minus)
+  # Sort eigenvalues and eigenvectors in the decending order.
+  sorted_indices_minus = np.argsort(eigen_vals_minus)
+  eigen_vals_minus = eigen_vals_minus[sorted_indices_minus]
+  if eigen_vals_plus[3] >= eigen_vals_minus[3]:
+    return 1
+  else:
+    return -1
+  
 def pseudo_armijo(alpha, dim, p, bonds):
-  MAX_DIVIDE = 20; time =0
+  # 最大繰り返し回数
+  MAX_DIVIDE = 20; time =0; row = 0.6;
+  # Armijoの係数定数c1
   c1 = 0.1
+  # 2方向を考慮
+  alpha_plus = alpha
+  alpha_minus = -alpha
+  # フレームワーク・剛性行列の作成
   F = rp.framework(p, bonds)
   # Rigidity matrix
   R = F.rigidityMatrix().T
@@ -22,25 +60,27 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # d=2 4th minimum eigenvalue
   fourth_smallest_eigenvalue = eigen_vals[3]
   fourth_smallest_eigenvector = eigen_vecs[:, 3].real
-  # eigenvalueの方向±どっち？
+  # eigenvalueの方向決め
+  dd = pseudo_descent_dir(p, bonds, fourth_smallest_eigenvector, dim)
+  fourth_smallest_eigenvector *= dd
+  # 更新後のrealization p_after
   p_after = p-alpha*fourth_smallest_eigenvector.reshape(-1, dim)
+  # 更新後のフレームワークを用意
   F_after = rp.framework(p_after, bonds)
   # Rigidity matrix
   R_after = F_after.rigidityMatrix().T
   # Stiffness matrix
   L_after = R_after @ R_after.T
   # Eigenvalues
-  eigen_vals, eigen_vecs = np.linalg.eig(L_after)
+  eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
   # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices = np.argsort(eigen_vals)
-  eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
+  sorted_indices_after = np.argsort(eigen_vals_after)
+  eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[sorted_indices_after]
   # d=2 4th minimum eigenvalue
-  fourth_smallest_eigenvalue_after = eigen_vals[3]
-  fourth_smallest_eigenvector_after = eigen_vecs[:, 3].real
+  fourth_smallest_eigenvalue_after, fourth_smallest_eigenvector_after = eigen_vals_after[3], eigen_vecs_after[:,3]
   cd = fourth_smallest_eigenvalue + c1*alpha*np.dot(fourth_smallest_eigenvector, p.flatten()) - fourth_smallest_eigenvalue_after
   while(cd>0 and time < MAX_DIVIDE):
-    alpha /= 2
-    # eigenvalueの方向±どっち？
+    alpha *= row
     p_after = p-alpha*fourth_smallest_eigenvector.reshape(-1,dim)
     F_after = rp.framework(p_after, bonds)
     # Rigidity matrix
@@ -48,16 +88,67 @@ def pseudo_armijo(alpha, dim, p, bonds):
     # Stiffness matrix
     L_after = R_after @ R_after.T
     # Eigenvalues
-    eigen_vals, eigen_vecs = np.linalg.eig(L_after)
+    eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
     # Sort eigenvalues and eigenvectors in the decending order.
-    sorted_indices = np.argsort(eigen_vals)
-    eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
+    sorted_indices_after = np.argsort(eigen_vals_after)
+    eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[sorted_indices_after]
     # d=2 4th minimum eigenvalue
-    fourth_smallest_eigenvalue_after = eigen_vals[3]
-    fourth_smallest_eigenvector_after = eigen_vecs[:, 3].real
+    fourth_smallest_eigenvalue_after = eigen_vals_after[3]
+    fourth_smallest_eigenvector_after = eigen_vecs_after[:, 3].real
     cd = fourth_smallest_eigenvalue + c1*alpha*np.dot(fourth_smallest_eigenvector, p.flatten()) - fourth_smallest_eigenvalue_after
     time +=1
-  return alpha
+  del F
+  del F_after
+  return alpha, fourth_smallest_eigenvalue_after, fourth_smallest_eigenvector_after, p_after
+
+# ライブラリーを用いてテスト
+# G:k-regular graph, p:realization, eps: 近似する際のeps
+def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
+  # 各定数
+  # 最初のp
+  p_init = p
+  # 最大繰り返し回数
+  MAX_ITER = 3000
+  # realization,固有値の格納（格納する固有値は初回を含めて100回分）
+  p_box = []
+  alpha_box = []
+  eigen_val_box = []
+  eigen_vec_box = []
+  # 次元 dim
+  dim = p.shape[1]
+  print("dim:",dim)
+  # node数
+  V = len(G_regular)
+  # 辺集合
+  bonds = np.array(list(G_regular.edges()))
+  # 固有ベクトルの初期化
+  eigen_vec = eigen_vec_0
+  # pの正規化
+  p = p/np.linalg.norm(p)
+  # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
+  for i in range(MAX_ITER):
+    # realizationの格納
+    p_box.append(p)
+    # 移動分の係数
+    alpha = 1
+    alpha, fourth_smallest_eigenvalue_after, fourth_smallest_eigenvector_after, p_after = pseudo_armijo(alpha, dim, p, bonds)
+    alpha_box.append(alpha)
+    # realizationを正規化して更新
+    p = p_after/np.linalg.norm(p_after)
+    # 固有値の格納
+    eigen_val_box.append(fourth_smallest_eigenvalue_after)
+    eigen_vec_box.append(fourth_smallest_eigenvector_after)
+  # 最大値を取るインデックス
+  max_index = np.argmax(eigen_val_box)
+  # visual = Trueの場合に固有値の推移の様子をプロットする。
+  if visual_eigen:
+    plot_eigen_vals(eigen_val_box)
+    plot_alpha(alpha_box)
+    F = rp.framework(p_box[max_index], bonds)
+    custom_visualize(F, label="opt")
+    F = rp.framework(p_init, bonds)
+    custom_visualize(F, label = "init")
+  return p_box[max_index], eigen_val_box[max_index], eigen_vec_box[max_index]
 # G:k-regular graph, p:realization, eps: 近似する際のeps
 def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
   # 各定数
@@ -107,74 +198,7 @@ def max_p_eigenvalue(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_
   if visual_eigen:
     plot_eigen_vals(eigen_vals)
   return p_box[max_index], eigen_vals[max_index], eigen_vecs[max_index]
-# ライブラリーを用いてテスト
-# G:k-regular graph, p:realization, eps: 近似する際のeps
-def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, eps, visual_eigen=False, visual_frame=False):
-  # 各定数
-  # 最大繰り返し回数
-  MAX_ITER = 3000
-  # realization,固有値の格納（格納する固有値は初回を含めて100回分）
-  p_box = []
-  alpha_box = []
-  eigen_val_box = []
-  eigen_vec_box = []
-  # 次元 dim
-  dim = p.shape[1]
-  print("dim:",dim)
-  # node数
-  V = len(G_regular)
-  # 辺集合
-  bonds = np.array(list(G_regular.edges()))
-  # 固有ベクトルの初期化
-  eigen_vec = eigen_vec_0
-  # pの正規化
-  p = p/np.linalg.norm(p)
-  # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
-  for i in range(MAX_ITER):
-    # realizationの格納
-    p_box.append(p)
-    # 移動分の係数
-    alpha = 1
-    alpha = pseudo_armijo(alpha, dim, p, bonds)
-    alpha_box.append(alpha)
-    # framework
-    F = rp.framework(p, bonds)
-    if visual_frame:
-      custom_visualize(F)
-    # Rigidity matrix
-    R = F.rigidityMatrix().T
-    # Stiffness matrix
-    L = R @ R.T
-    # Eigenvalues
-    eigen_vals, eigen_vecs = np.linalg.eig(L)
-    # Sort eigenvalues and eigenvectors in the decending order.
-    sorted_indices = np.argsort(eigen_vals)
-    eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
-    # d=2 4th minimum eigenvalue
-    fourth_smallest_eigenvalue = eigen_vals[3]
-    fourth_smallest_eigenvector = eigen_vecs[:, 3].real
-    print("fourth_smallest_eigenvalue:", fourth_smallest_eigenvalue)
-    print("fourth_smallest_eigenvector:", fourth_smallest_eigenvector)
-    # realizationの更新
-    p -= alpha*np.copy(fourth_smallest_eigenvector).reshape(-1,dim)
-    p = p/np.linalg.norm(p)
-    print(np.linalg.norm(p))
-    # 固有値の格納
-    eigen_val_box.append(fourth_smallest_eigenvalue)
-    eigen_vec_box.append(fourth_smallest_eigenvector)
-    # フレームワークの削除
-    del F
-  # 最大値を取るインデックス
-  max_index = np.argmax(eigen_val_box)
-  # visual = Trueの場合に固有値の推移の様子をプロットする。
-  if visual_eigen:
-    plot_eigen_vals(eigen_val_box)
-    plot_alpha(alpha_box)
-    F = rp.framework(p_box[max_index], bonds)
-    custom_visualize(F)
-    F = rp.framework(p_box[len(p_box)-1], bonds)
-    custom_visualize(F)
-  return p_box[max_index], eigen_val_box[max_index], eigen_vec_box[max_index]
+
 # 固有値のプロット
 def plot_eigen_vals(eigen_vals, limit=False):
   fig = plt.figure(figsize=(6,4))
