@@ -33,7 +33,7 @@ def pseudo_ascent_dir(p, bonds, eigenvector, dim):
   # Stiffness matrix
   L_plus = stiffness_matrix(p_plus,bonds)
   # Eigenvalues
-  eigen_vals_plus = np.linalg.eig(L_plus)
+  eigen_vals_plus, _ = np.linalg.eig(L_plus)
   # Sort eigenvalues and eigenvectors in the decending order.
   sorted_indices_plus = np.argsort(eigen_vals_plus)
   eigen_vals_plus = eigen_vals_plus[sorted_indices_plus]
@@ -42,7 +42,7 @@ def pseudo_ascent_dir(p, bonds, eigenvector, dim):
   # Stiffness matrix
   L_minus = stiffness_matrix(p_minus,bonds)
   # Eigenvalues
-  eigen_vals_minus = np.linalg.eig(L_minus)
+  eigen_vals_minus, _ = np.linalg.eig(L_minus)
   # Sort eigenvalues and eigenvectors in the decending order.
   sorted_indices_minus = np.argsort(eigen_vals_minus)
   eigen_vals_minus = eigen_vals_minus[sorted_indices_minus]
