@@ -14,15 +14,17 @@ C1 : The constant for the Armijo condition
 ROW : Decreasing ratio for Armijo.
 (Calculation for eigenvalues)
 NON_ZERO_INDEX : The index of the non zero eigenvalue of a stiffness matrix.
+MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalues.
 """
 # Ascent Direct
 EPSILON = 0.0000001
 # Armijo Condition
-MAX_ITER_FOR_ARMIJO = 2
+MAX_ITER_FOR_ARMIJO = 13
 C1 = 0.1
 ROW = 0.6
 # Calculation for eigenvalues
 NON_ZERO_INDEX = 3
+MAX_ITER_FOR_EIGENVALUE = 3000
 
 ###################################################
 
@@ -61,7 +63,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # Sort eigenvalues and eigenvectors in the decending order.
   sorted_indices = np.argsort(eigen_vals)
   eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[sorted_indices]
-  # d=2 4th minimum eigenvalue
+  # d=2 4th non-zero minimum eigenvalue
   non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
   non_zero_smallest_eigenvector = eigen_vecs[:,NON_ZERO_INDEX].real
   # eigenvalueの方向決め、これによりnon_zero_smallest_eigenvectorが上昇方向として確定する。
@@ -77,9 +79,9 @@ def pseudo_armijo(alpha, dim, p, bonds):
   sorted_indices_after = np.argsort(eigen_vals_after)
   eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[sorted_indices_after]
   # d=2 4th minimum eigenvalue
-  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = eigen_vals_after[NON_ZERO_INDEX], eigen_vecs_after[:,NON_ZERO_INDEX]
-  # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。
-  cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
+  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = eigen_vals_after[NON_ZERO_INDEX], eigen_vecs_after[:,NON_ZERO_INDEX].real
+  # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。（向きを調整する前のもともとの固有ベクトルに戻すためにddをかけている）
+  cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, dd*non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
   while(cd>0 and count < MAX_ITER_FOR_ARMIJO):
     alpha *= ROW
     p_after = p+alpha*non_zero_smallest_eigenvector.reshape(-1,dim)
@@ -102,8 +104,6 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
   # 各定数
   # 最初のp(realization)
   p_init = p
-  # 最大繰り返し回数この分だけ固有ベクトル方向に移動させる
-  MAX_ITER = 3000
   # realization,alpha,固有値,固有ベクトルを記録するための箱（格納する固有値は初回を含めてMAX_ITER回分）
   p_box = []
   alpha_box = []
@@ -116,7 +116,7 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
   # pの正規化
   p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
-  for _ in range(MAX_ITER):
+  for _ in range(MAX_ITER_FOR_EIGENVALUE):
     # realizationの格納
     p_box.append(p)
     # 移動分の係数
@@ -132,7 +132,7 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
     eigen_vec_box.append(non_zero_smallest_eigenvector_after)
   # 最大値を取るインデックス
   max_index = np.argmax(eigen_val_box)
-  # visual_eigen = Trueの場合に固有値の推移の様子をプロットする。
+  # visual_eigen = Trueの場合に固有値の推移の様子をプロットする。テスト用
   if visual_eigen:
     plot_eigen_vals(eigen_val_box)
     plot_alpha(alpha_box)
@@ -140,4 +140,6 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
     custom_visualize(F, label=f"opt, index={max_index} value")
     F = rp.framework(p_init, bonds)
     custom_visualize(F, label = "init")
+    print(f"max index: {max_index}")
+    print(f"sup non zero eigenvalue: {eigen_val_box[max_index]}")
   return p_box[max_index], eigen_val_box[max_index], eigen_vec_box[max_index]

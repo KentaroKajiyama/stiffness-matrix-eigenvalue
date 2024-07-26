@@ -13,7 +13,7 @@ def custom_visualize(framework,label, limit=False):
   # 角度データを生成
   theta = np.linspace(0, 2 * np.pi, 100)
   # 半径0.33と0.66の円のデータを生成
-  radii = [0.33, 0.66]
+  radii = [0.31622, 0.63244]
   circles = [(r * np.cos(theta), r * np.sin(theta)) for r in radii] 
   # 円をプロット
   for i, (x, y) in enumerate(circles):
