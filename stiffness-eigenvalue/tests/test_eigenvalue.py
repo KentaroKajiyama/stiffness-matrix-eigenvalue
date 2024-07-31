@@ -1,4 +1,5 @@
 import numpy as np
+import scipy
 import networkx as nx
 import math
 from stiffness_eigenvalue.eigenvalue import gen_skew_symmetric, gen_parallel_vector, gen_basis, min_non_zero_eigen
@@ -39,7 +40,7 @@ def test3():
   L = stiffness_matrix(p, bonds)
   # ライブラリーと手動実装の比較
   # ライブラリー
-  lib_eigvals, lib_eigvecs = np.linalg.eig(L)
+  lib_eigvals, lib_eigvecs = scipy.linalg.eigh(L)
   sorted_indices = np.argsort(lib_eigvals)
   lib_eigvals_sorted, lib_eigvecs_sorted = lib_eigvals[sorted_indices], lib_eigvecs[sorted_indices]
   lib_eigval, lib_eigvec = lib_eigvals_sorted[D], lib_eigvecs_sorted[D] # 0 baseなのでD+1番目だがインデックスはDであることに注意

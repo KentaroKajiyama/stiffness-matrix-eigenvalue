@@ -9,7 +9,7 @@ BIG_C : A big constant for optimization
 """
 ###########################
 EPS_OBJ = 10**(-8)
-BIG_C = 10**6
+BIG_C = 10**10
 ###########################
 
 # 回転行列（歪対称行列）の生成
@@ -60,4 +60,4 @@ def min_non_zero_eigen(L, x0, d, p):
   # 目的関数
   obj_func = partial(objective, L=L_tilde)
   opt = minimize(obj_func, x0)
-  return opt.fun, opt.x
+  return opt.fun, opt.x/np.linalg.norm(opt.x)
