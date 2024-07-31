@@ -1,6 +1,7 @@
 import networkx as nx
 import numpy as np
 from stiffness_eigenvalue.max_eigenvalue import max_p_eigenvalue_lib
+import time
 
 # 完全グラフでテスト
 def test_complete():
@@ -24,4 +25,7 @@ def test_complete():
   p, eigen_val, eigen_vec = max_p_eigenvalue_lib(G_regular=G_comp, p=p, eigen_vec_0= v0,visual_eigen=True)
   
 if __name__ == "__main__":
+  start=time.time()
   test_complete()
+  t=time.time()-start
+  print(f"time:{t}")
