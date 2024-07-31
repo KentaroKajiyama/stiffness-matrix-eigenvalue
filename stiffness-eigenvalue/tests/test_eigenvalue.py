@@ -11,8 +11,8 @@ def test1():
     print(f"{i}th transformer: S = {S}, t = {t}")
 # 基底生成のテスト
 def test2():
-  dim = 2 
-  V = 2
+  dim = 4
+  V = 10
   # position of sites
   p = 5*np.random.randn(dim*V).reshape(-1,dim)
   basis_box = gen_basis(dim,p)
