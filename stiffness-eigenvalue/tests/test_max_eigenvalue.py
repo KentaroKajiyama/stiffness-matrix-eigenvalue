@@ -1,6 +1,6 @@
 import networkx as nx
 import numpy as np
-from stiffness_eigenvalue.max_eigenvalue import max_p_eigenvalue_lib
+from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
 import time
 
 # 完全グラフでテスト
