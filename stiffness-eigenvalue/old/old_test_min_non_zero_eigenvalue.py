@@ -73,4 +73,4 @@ def test_3():
 # 時間の計測
 # テスト実行用
 if __name__ == "__main__":
-  test_3()
+  test_1()
