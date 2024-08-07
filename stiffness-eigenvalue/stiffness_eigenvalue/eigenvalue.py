@@ -42,7 +42,6 @@ def gen_basis(d,p):
   t_box = gen_parallel_vector(d)
   for i, trans in enumerate(zip(S_box, t_box)):
     S = trans[0]; t = trans[1]; x = [];
-    print(f"gen basis {i+1}th transformer: S = {S}, t = {t}")
     for j in range(n):
       x_j = S @ p[j] + t
       x.extend(x_j)
