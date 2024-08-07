@@ -1,7 +1,8 @@
 import numpy as np
 import rigidpy as rp
 from stiffness_eigenvalue.framework import stiffness_matrix
-from stiffness_eigenvalue.visualize import custom_visualize, plot_eigen_vals,plot_alpha, on_key
+from stiffness_eigenvalue.visualize import custom_visualize, plot_eigen_vals,plot_alpha
+from stiffness_eigenvalue.eigenvalue import min_non_zero_eigen
 
 ##################################################
 """
@@ -34,37 +35,25 @@ def pseudo_ascent_dir(p, bonds, eigenvector, dim):
   # Stiffness matrix
   L_plus = stiffness_matrix(p_plus,bonds)
   # Eigenvalues
-  eigen_vals_plus, _ = np.linalg.eig(L_plus)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_plus = np.argsort(eigen_vals_plus)
-  eigen_vals_plus = eigen_vals_plus[sorted_indices_plus]
+  eigen_vals_plus, _ = min_non_zero_eigen(L_plus, eigenvector, dim, p_plus)
   # -の場合(eigenvectorと逆方向に移動させる場合)
   p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_minus = stiffness_matrix(p_minus,bonds)
   # Eigenvalues
-  eigen_vals_minus, _ = np.linalg.eig(L_minus)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_minus = np.argsort(eigen_vals_minus)
-  eigen_vals_minus = eigen_vals_minus[sorted_indices_minus]
-  if eigen_vals_plus[NON_ZERO_INDEX] >= eigen_vals_minus[NON_ZERO_INDEX]:
+  eigen_vals_minus, _ = min_non_zero_eigen(L_minus, eigenvector, dim, p_minus)
+  if eigen_vals_plus >= eigen_vals_minus:
     return 1
   else:
     return -1
 # Armijoの条件、勾配の代わりに固有ベクトルを降下方向としている
-def pseudo_armijo(alpha, dim, p, bonds):
+def pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds):
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix
   L = stiffness_matrix(p,bonds)
-  # Eigenvalues
-  eigen_vals, eigen_vecs = np.linalg.eig(L)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices = np.argsort(eigen_vals)
-  eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[:,sorted_indices]
-  # d=2 4th non-zero minimum eigenvalue
-  non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
-  non_zero_smallest_eigenvector = eigen_vecs[:,NON_ZERO_INDEX].real
+  # Eigenvalues, Eigenvectors
+  non_zero_smallest_eigenvalue, non_zero_smallest_eigenvector = min_non_zero_eigen(L, eigen_vec_0, dim, p)
   # eigenvalueの方向決め、これによりnon_zero_smallest_eigenvectorが上昇方向として確定する。
   dd = pseudo_ascent_dir(p, bonds, non_zero_smallest_eigenvector, dim)
   non_zero_smallest_eigenvector *= dd
@@ -72,13 +61,8 @@ def pseudo_armijo(alpha, dim, p, bonds):
   p_after = p+alpha*non_zero_smallest_eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_after = stiffness_matrix(p_after,bonds)
-  # Eigenvalues
-  eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_after = np.argsort(eigen_vals_after)
-  eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[:,sorted_indices_after]
-  # d=2 4th minimum eigenvalue
-  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = eigen_vals_after[NON_ZERO_INDEX], eigen_vecs_after[:,NON_ZERO_INDEX].real
+  # Eigenvalues, Eigenvectors
+  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, dim, p_after)
   # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。（向きを調整する前のもともとの固有ベクトルに戻すためにddをかけている）
   cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, dd*non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
   while(cd>0 and count < MAX_ITER_FOR_ARMIJO):
@@ -86,20 +70,14 @@ def pseudo_armijo(alpha, dim, p, bonds):
     p_after = p+alpha*non_zero_smallest_eigenvector.reshape(-1,dim)
     # Stiffness matrix
     L_after = stiffness_matrix(p_after, bonds)
-    # Eigenvalues
-    eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
-    # Sort eigenvalues and eigenvectors in the decending order.
-    sorted_indices_after = np.argsort(eigen_vals_after)
-    eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[:,sorted_indices_after]
-    # d=2 4th minimum eigenvalue
-    non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
-    non_zero_smallest_eigenvector_after = eigen_vecs_after[:,NON_ZERO_INDEX].real
+    # Eigenvalues, Eigenvectors
+    non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, dim, p_after)
     cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
     count +=1
   return alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after
 # ライブラリーを用いてテスト
 # ライブラリを用いて直接固有値全てを計算し、最小非ゼロ固有値のみを取り出すG:k-regular graph, p:realization, eps: 近似する際のeps
-def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
+def max_p_eigenvalue_hand(G_regular, p, eigen_vec_0, visual_eigen=False):
   # 各定数
   # 最初のp(realization)
   p_init = p
@@ -121,7 +99,7 @@ def max_p_eigenvalue_lib(G_regular, p, eigen_vec_0, visual_eigen=False):
     # 移動分の係数
     alpha = 1
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行っている
-    alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after = pseudo_armijo(alpha, dim, p, bonds)
+    alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after = pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds)
     # alphaの値を記録
     alpha_box.append(alpha)
     # realizationを正規化して更新

@@ -4,6 +4,7 @@ import networkx as nx
 import math
 from stiffness_eigenvalue.eigenvalue import gen_skew_symmetric, gen_parallel_vector, gen_basis, min_non_zero_eigen
 from stiffness_eigenvalue.framework import stiffness_matrix
+import time
 
 # Sとtの生成のテスト
 def test1():
@@ -62,18 +63,24 @@ def test3():
   L = stiffness_matrix(p, bonds)
   # ライブラリーと手動実装の比較
   # ライブラリー
+  start = time.time()
   lib_eigvals, lib_eigvecs = scipy.linalg.eigh(L)
   sorted_indices = np.argsort(lib_eigvals)
   lib_eigvals_sorted, lib_eigvecs_sorted = lib_eigvals[sorted_indices], lib_eigvecs[:, sorted_indices]
-  lib_eigval, lib_eigvec = lib_eigvals_sorted[D], lib_eigvecs_sorted[D] # 0 baseなのでD+1番目だがインデックスはDであることに注意
+  lib_eigval, lib_eigvec = lib_eigvals_sorted[D], lib_eigvecs_sorted[:,D] # 0 baseなのでD+1番目だがインデックスはDであることに注意
+  end1 = time.time()
   # 手動実装
   hand_eigval, hand_eigvec = min_non_zero_eigen(L, x0, d, p)
+  end2 = time.time()
   print("library vs hand")
   print("Eigenvalue")
   print(f"lib:{lib_eigval}, hand:{hand_eigval}")
   print("Eigenvector")
   print(f"lib:{lib_eigvec}, hand:{hand_eigvec}")
-  
+  print("vLv")
+  print(f"lib:{np.dot(lib_eigvec, np.dot(L, lib_eigvec))}, hand:{np.dot(hand_eigvec, np.dot(L, hand_eigvec))}")
+  print(f"norm lib:{np.linalg.norm(lib_eigvec)}, norm hand:{np.linalg.norm(hand_eigvec)}")
+  print(f"lib time:{end1-start}, hand time:{end2-end1}")
 
 if __name__ == "__main__":
   test3()
