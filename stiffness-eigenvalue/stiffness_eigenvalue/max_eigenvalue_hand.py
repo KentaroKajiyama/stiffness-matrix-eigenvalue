@@ -2,7 +2,7 @@ import numpy as np
 import rigidpy as rp
 from stiffness_eigenvalue.framework import stiffness_matrix
 from stiffness_eigenvalue.visualize import custom_visualize, plot_eigen_vals,plot_alpha
-from stiffness_eigenvalue.eigenvalue import min_non_zero_eigen
+from stiffness_eigenvalue.eigenvalue import gen_parallel_vector, gen_skew_symmetric, min_non_zero_eigen
 
 ##################################################
 """
@@ -29,40 +29,40 @@ MAX_ITER_FOR_EIGENVALUE = 3000
 ###################################################
 
 # 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）
-def pseudo_ascent_dir(p, bonds, eigenvector, dim):
+def pseudo_ascent_dir(p, bonds, eigenvalue_current, eigenvector, dim, S_box, t_box):
   # +の場合(eigenvectorと同じ方向に移動させる場合)
   p_plus = p + EPSILON*eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_plus = stiffness_matrix(p_plus,bonds)
-  # Eigenvalues
-  eigen_vals_plus, _ = min_non_zero_eigen(L_plus, eigenvector, dim, p_plus)
-  # -の場合(eigenvectorと逆方向に移動させる場合)
-  p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
-  # Stiffness matrix
-  L_minus = stiffness_matrix(p_minus,bonds)
-  # Eigenvalues
-  eigen_vals_minus, _ = min_non_zero_eigen(L_minus, eigenvector, dim, p_minus)
-  if eigen_vals_plus >= eigen_vals_minus:
+  # Eigenvalue
+  eigenvalue_plus, _ = min_non_zero_eigen(L_plus, eigenvector, p_plus, S_box, t_box)
+  # # -の場合(eigenvectorと逆方向に移動させる場合)（-の場合は省略して現在の値と比較する）
+  # p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
+  # # Stiffness matrix
+  # L_minus = stiffness_matrix(p_minus,bonds)
+  # # Eigenvalues
+  # eigen_vals_minus, _ = min_non_zero_eigen(L_minus, eigenvector, p_minus, S_box, t_box)
+  if eigenvalue_plus >= eigenvalue_current:
     return 1
   else:
     return -1
 # Armijoの条件、勾配の代わりに固有ベクトルを降下方向としている
-def pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds):
+def pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds, S_box, t_box):
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix
   L = stiffness_matrix(p,bonds)
   # Eigenvalues, Eigenvectors
-  non_zero_smallest_eigenvalue, non_zero_smallest_eigenvector = min_non_zero_eigen(L, eigen_vec_0, dim, p)
+  non_zero_smallest_eigenvalue, non_zero_smallest_eigenvector = min_non_zero_eigen(L, eigen_vec_0, p, S_box, t_box)
   # eigenvalueの方向決め、これによりnon_zero_smallest_eigenvectorが上昇方向として確定する。
-  dd = pseudo_ascent_dir(p, bonds, non_zero_smallest_eigenvector, dim)
+  dd = pseudo_ascent_dir(p, bonds, non_zero_smallest_eigenvalue, non_zero_smallest_eigenvector, dim, S_box, t_box)
   non_zero_smallest_eigenvector *= dd
   # 更新後のrealization p_after
   p_after = p+alpha*non_zero_smallest_eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_after = stiffness_matrix(p_after,bonds)
   # Eigenvalues, Eigenvectors
-  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, dim, p_after)
+  non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, p_after, S_box, t_box)
   # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。（向きを調整する前のもともとの固有ベクトルに戻すためにddをかけている）
   cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, dd*non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
   while(cd>0 and count < MAX_ITER_FOR_ARMIJO):
@@ -71,7 +71,7 @@ def pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds):
     # Stiffness matrix
     L_after = stiffness_matrix(p_after, bonds)
     # Eigenvalues, Eigenvectors
-    non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, dim, p_after)
+    non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = min_non_zero_eigen(L_after, non_zero_smallest_eigenvector, p_after, S_box, t_box)
     cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(non_zero_smallest_eigenvector, non_zero_smallest_eigenvector) - non_zero_smallest_eigenvalue_after
     count +=1
   return alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after
@@ -90,6 +90,9 @@ def max_p_eigenvalue_hand(G_regular, p, eigen_vec_0, visual_eigen=False):
   dim = p.shape[1]
   # 辺集合
   bonds = np.array(list(G_regular.edges()))
+  # 基底生成用のSとt
+  S_box = gen_skew_symmetric(dim)
+  t_box = gen_parallel_vector(dim)
   # pの正規化
   p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
@@ -99,7 +102,7 @@ def max_p_eigenvalue_hand(G_regular, p, eigen_vec_0, visual_eigen=False):
     # 移動分の係数
     alpha = 1
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行っている
-    alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after = pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds)
+    alpha, non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after, p_after = pseudo_armijo(alpha, eigen_vec_0, dim, p, bonds, S_box, t_box)
     # alphaの値を記録
     alpha_box.append(alpha)
     # realizationを正規化して更新

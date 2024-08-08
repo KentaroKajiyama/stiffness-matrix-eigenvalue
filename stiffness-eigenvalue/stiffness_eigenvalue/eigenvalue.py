@@ -33,13 +33,11 @@ def gen_parallel_vector(d):
     result = []
   [result.append(np.array([0 if i!=j else 1 for i in range(0,d)])) for j in range(0,d)]
   return result
-# 基底の生成
-def gen_basis(d,p):
+# 基底の生成（Sとtはグローバルに使いまわす。）
+def gen_basis(S_box, t_box, p):
   # 点の個数
   n = len(p)
   basis_box = []
-  S_box = gen_skew_symmetric(d)
-  t_box = gen_parallel_vector(d)
   for i, trans in enumerate(zip(S_box, t_box)):
     S = trans[0]; t = trans[1]; x = [];
     for j in range(n):
@@ -55,9 +53,9 @@ def objective(x,L):
   else:
     return np.dot(x.T, np.dot(L, x))/np.dot(x.T, x)
 # 固有値計算（最適化による計算）。固有値と固有ベクトルを返す。
-def min_non_zero_eigen(L, x0, d, p):
+def min_non_zero_eigen(L, x0, p, S_box, t_box):
   # 近似行列の生成
-  basis_box = gen_basis(d,p)
+  basis_box = gen_basis(S_box, t_box, p)
   L_tilde = L
   for basis in basis_box:
     L_tilde += BIG_C*np.outer(basis, basis)
