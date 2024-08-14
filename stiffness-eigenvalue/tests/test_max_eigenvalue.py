@@ -25,7 +25,7 @@ def test_complete_hand():
   v0 = 3*np.random.randn(d*V)
   p, eigen_val, eigen_vec = max_p_eigenvalue_hand(G_regular=G_comp, p=p, eigen_vec_0=v0, visual_eigen=True)
   
-# 完全グラフでテスト（ライブラリを用いたもの）（time: 200s~300s）
+# 完全グラフでテスト（ライブラリを用いたもの）（time: 200s~300s）=> Backtrackの更新回数を1回に、libraryを対称行列限定のものにするとと150s~170s程度に改善全体の1/4~1/2程度の時間をArmijo条件の反復に費やしていそう。
 def test_complete_lib():
   # np.random.seed(1)
   # 各定数
@@ -48,6 +48,6 @@ def test_complete_lib():
   
 if __name__ == "__main__":
   start=time.time()
-  test_complete_hand()
+  test_complete_lib()
   t=time.time()-start
   print(f"time:{t}")

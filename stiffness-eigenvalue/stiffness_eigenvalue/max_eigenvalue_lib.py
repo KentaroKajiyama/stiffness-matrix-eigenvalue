@@ -19,7 +19,7 @@ MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalue
 # Ascent Direct
 EPSILON = 0.0000001
 # Armijo Condition
-MAX_ITER_FOR_ARMIJO = 13
+MAX_ITER_FOR_ARMIJO = 1
 C1 = 0.10
 ROW = 0.6
 # Calculation for eigenvalues
@@ -28,26 +28,20 @@ MAX_ITER_FOR_EIGENVALUE = 3000
 ###################################################
 
 # 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）
-def pseudo_ascent_dir(p, bonds, eigenvector, dim):
+def pseudo_ascent_dir(p, bonds, eigenvalue_current, eigenvector, dim):
   # +の場合(eigenvectorと同じ方向に移動させる場合)
   p_plus = p + EPSILON*eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_plus = stiffness_matrix(p_plus,bonds)
   # Eigenvalues
-  eigen_vals_plus, _ = np.linalg.eig(L_plus)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_plus = np.argsort(eigen_vals_plus)
-  eigen_vals_plus = eigen_vals_plus[sorted_indices_plus]
-  # -の場合(eigenvectorと逆方向に移動させる場合)
-  p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
-  # Stiffness matrix
-  L_minus = stiffness_matrix(p_minus,bonds)
-  # Eigenvalues
-  eigen_vals_minus, _ = np.linalg.eig(L_minus)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_minus = np.argsort(eigen_vals_minus)
-  eigen_vals_minus = eigen_vals_minus[sorted_indices_minus]
-  if eigen_vals_plus[NON_ZERO_INDEX] >= eigen_vals_minus[NON_ZERO_INDEX]:
+  eigen_vals_plus, _ = np.linalg.eigh(L_plus)
+  # # -の場合(eigenvectorと逆方向に移動させる場合)（-の場合は省略する）
+  # p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
+  # # Stiffness matrix
+  # L_minus = stiffness_matrix(p_minus,bonds)
+  # # Eigenvalues
+  # eigen_vals_minus, _ = np.linalg.eigh(L_minus)
+  if eigen_vals_plus[NON_ZERO_INDEX] >= eigenvalue_current:
     return 1
   else:
     return -1
@@ -58,25 +52,19 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # Stiffness matrix
   L = stiffness_matrix(p,bonds)
   # Eigenvalues
-  eigen_vals, eigen_vecs = np.linalg.eig(L)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices = np.argsort(eigen_vals)
-  eigen_vals, eigen_vecs = eigen_vals[sorted_indices], eigen_vecs[:,sorted_indices]
+  eigen_vals, eigen_vecs = np.linalg.eigh(L)
   # d=2 4th non-zero minimum eigenvalue
   non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
   non_zero_smallest_eigenvector = eigen_vecs[:,NON_ZERO_INDEX].real
   # eigenvalueの方向決め、これによりnon_zero_smallest_eigenvectorが上昇方向として確定する。
-  dd = pseudo_ascent_dir(p, bonds, non_zero_smallest_eigenvector, dim)
+  dd = pseudo_ascent_dir(p, bonds, non_zero_smallest_eigenvalue, non_zero_smallest_eigenvector, dim)
   non_zero_smallest_eigenvector *= dd
   # 更新後のrealization p_after
   p_after = p+alpha*non_zero_smallest_eigenvector.reshape(-1, dim)
   # Stiffness matrix
   L_after = stiffness_matrix(p_after,bonds)
   # Eigenvalues
-  eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
-  # Sort eigenvalues and eigenvectors in the decending order.
-  sorted_indices_after = np.argsort(eigen_vals_after)
-  eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[:,sorted_indices_after]
+  eigen_vals_after, eigen_vecs_after = np.linalg.eigh(L_after)
   # d=2 4th minimum eigenvalue
   non_zero_smallest_eigenvalue_after, non_zero_smallest_eigenvector_after = eigen_vals_after[NON_ZERO_INDEX], eigen_vecs_after[:,NON_ZERO_INDEX].real
   # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。（向きを調整する前のもともとの固有ベクトルに戻すためにddをかけている）
@@ -87,10 +75,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
     # Stiffness matrix
     L_after = stiffness_matrix(p_after, bonds)
     # Eigenvalues
-    eigen_vals_after, eigen_vecs_after = np.linalg.eig(L_after)
-    # Sort eigenvalues and eigenvectors in the decending order.
-    sorted_indices_after = np.argsort(eigen_vals_after)
-    eigen_vals_after, eigen_vecs_after = eigen_vals_after[sorted_indices_after], eigen_vecs_after[:,sorted_indices_after]
+    eigen_vals_after, eigen_vecs_after = np.linalg.eigh(L_after)
     # d=2 4th minimum eigenvalue
     non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
     non_zero_smallest_eigenvector_after = eigen_vecs_after[:,NON_ZERO_INDEX].real
