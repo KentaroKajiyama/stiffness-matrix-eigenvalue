@@ -2,6 +2,8 @@ import numpy as np
 import math
 from scipy.optimize import minimize
 from functools import partial
+from joblib import Parallel, delayed
+import time
 
 """
 EPS_OBJ : A small constant for objective function 
@@ -34,32 +36,74 @@ def gen_parallel_vector(d):
   [result.append(np.array([0 if i!=j else 1 for i in range(0,d)])) for j in range(0,d)]
   return result
 # 基底の生成（Sとtはグローバルに使いまわす。）
+def process_single_basis(S, t, p):
+  x = np.dot(S, p.T).T + t
+  x_flat = x.flatten()
+  norm = np.linalg.norm(x_flat)
+  if norm > 0:
+    x_flat /= norm
+  return x_flat
 def gen_basis(S_box, t_box, p):
-  # 点の個数
-  n = len(p)
-  basis_box = []
-  for i, trans in enumerate(zip(S_box, t_box)):
-    S = trans[0]; t = trans[1]; x = [];
-    for j in range(n):
-      x_j = S @ p[j] + t
-      x.extend(x_j)
-    # 正規化を含む
-    basis_box.append(np.array(x)/np.linalg.norm(x))
+  n_jobs = -1
+  basis_box = Parallel(n_jobs=n_jobs)(delayed(process_single_basis)(S, t, p) for S, t in zip(S_box, t_box))
   return basis_box
+
 # 目的関数
-def objective(x,L):
-  if np.linalg.norm(x) <= EPS_OBJ:
+def objective(x, L):
+  norm_x = np.linalg.norm(x)
+  if norm_x <= EPS_OBJ:
     return 0
-  else:
-    return np.dot(x.T, np.dot(L, x))/np.dot(x.T, x)
-# 固有値計算（最適化による計算）。固有値と固有ベクトルを返す。
+  x.flatten()
+  Lx = np.dot(L, x)
+  return np.dot(x.T, Lx) / (norm_x**2)
+def objective_grad(x, L):
+  norm_x = np.linalg.norm(x)
+  if norm_x <= EPS_OBJ:
+    return np.zeros_like(x)
+  Lx = np.dot(L, x)
+  grad = 2 * (Lx / norm_x**2 - np.dot(x.T, Lx) * x / norm_x**4)
+  return grad
 def min_non_zero_eigen(L, x0, p, S_box, t_box):
   # 近似行列の生成
   basis_box = gen_basis(S_box, t_box, p)
   L_tilde = L
   for basis in basis_box:
-    L_tilde += BIG_C*np.outer(basis, basis)
+    L_tilde += BIG_C * (basis[:, np.newaxis] * basis[np.newaxis, :])
   # 目的関数
+  start = time.time()
   obj_func = partial(objective, L=L_tilde)
-  opt = minimize(obj_func, x0)
-  return opt.fun, opt.x/np.linalg.norm(opt.x)
+  opt = minimize(obj_func, x0, method="Newton-CG", jac=partial(objective_grad, L=L_tilde), options={"disp": False})
+  eigenvector = opt.x/np.linalg.norm(opt.x)
+  end = time.time()
+  print(f"Elapsed time for eigenvalue calculation:{end-start}")
+  return opt.fun, eigenvector
+
+def objective_sparce(x, L):
+  norm_x = np.linalg.norm(x)
+  if norm_x <= EPS_OBJ:
+    return 0
+  x.flatten()
+  Lx = L.dot(x)
+  return np.dot(x.T, Lx) / (norm_x**2)
+def objective_grad_sparce(x, L):
+  norm_x = np.linalg.norm(x)
+  if norm_x <= EPS_OBJ:
+    return np.zeros_like(x)
+  Lx = L.dot(x)
+  grad = 2 * (Lx / norm_x**2 - np.dot(x.T, Lx) * x / norm_x**4)
+  return grad
+# 固有値計算（最適化による計算）。固有値と固有ベクトルを返す。
+def min_non_zero_eigen_sparce(L, x0, p, S_box, t_box):
+  # 近似行列の生成
+  basis_box = gen_basis(S_box, t_box, p)
+  L_tilde = L
+  for basis in basis_box:
+    L_tilde += BIG_C * (basis[:, np.newaxis] * basis[np.newaxis, :])
+  # 目的関数
+  start = time.time()
+  obj_func = partial(objective_sparce, L=L_tilde)
+  opt = minimize(obj_func, x0, method="Newton-CG", jac=partial(objective_grad_sparce, L=L_tilde), options={"disp": False})
+  eigenvector = opt.x/np.linalg.norm(opt.x)
+  end = time.time()
+  print(f"Elapsed time for eigenvalue calculation:{end-start}")
+  return opt.fun, eigenvector

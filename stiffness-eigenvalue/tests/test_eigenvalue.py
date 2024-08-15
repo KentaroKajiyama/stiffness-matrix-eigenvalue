@@ -1,9 +1,11 @@
 import numpy as np
 import scipy
+import scipy.sparse
+from scipy.sparse.linalg import eigsh
 import networkx as nx
 import math
 from stiffness_eigenvalue.eigenvalue import gen_skew_symmetric, gen_parallel_vector, gen_basis, min_non_zero_eigen
-from stiffness_eigenvalue.framework import stiffness_matrix
+from stiffness_eigenvalue.framework import stiffness_matrix, stiffness_matrix_sparce
 import time
 
 # Sとtの生成のテスト
@@ -44,15 +46,14 @@ def test2():
   print(f"2,4:{np.dot(basis_box[1], eigen_vecs[:,3])}")
   print(f"3,4:{np.dot(basis_box[2], eigen_vecs[:,3])}")
   
-  
 # 最小固有値のテスト
 def test3():
   # 各定数
   d = 2
-  V = 6
+  V = 10000
   D = math.comb(d+1,2)
-  # 完全グラフの生成
-  G_comp = nx.complete_graph(V)
+  # ランダムグラフの生成
+  G_comp = nx.random_regular_graph(10,V)
   # 辺集合
   bonds = np.array(list(G_comp.edges()))
   # position of sites
@@ -60,27 +61,27 @@ def test3():
   # 初期固有ベクトル
   x0 = 3*np.random.randn(d*V)
   # stiffness matrix
-  L = stiffness_matrix(p, bonds)
+  L = stiffness_matrix_sparce(p, bonds)
   # ライブラリーと手動実装の比較
   # ライブラリー
   start = time.time()
-  lib_eigvals, lib_eigvecs = scipy.linalg.eigh(L)
-  sorted_indices = np.argsort(lib_eigvals)
-  lib_eigvals_sorted, lib_eigvecs_sorted = lib_eigvals[sorted_indices], lib_eigvecs[:, sorted_indices]
-  lib_eigval, lib_eigvec = lib_eigvals_sorted[D], lib_eigvecs_sorted[:,D] # 0 baseなのでD+1番目だがインデックスはDであることに注意
+  lib_eigvals, lib_eigvecs = scipy.sparse.linalg.eigsh(L, D+1)
+  lib_eigval, lib_eigvec = lib_eigvals[D], lib_eigvecs[:,D] # 0 baseなのでD+1番目だがインデックスはDであることに注意
   end1 = time.time()
-  # 手動実装
-  hand_eigval, hand_eigvec = min_non_zero_eigen(L, x0, d, p)
-  end2 = time.time()
-  print("library vs hand")
-  print("Eigenvalue")
-  print(f"lib:{lib_eigval}, hand:{hand_eigval}")
-  print("Eigenvector")
-  print(f"lib:{lib_eigvec}, hand:{hand_eigvec}")
-  print("vLv")
-  print(f"lib:{np.dot(lib_eigvec, np.dot(L, lib_eigvec))}, hand:{np.dot(hand_eigvec, np.dot(L, hand_eigvec))}")
-  print(f"norm lib:{np.linalg.norm(lib_eigvec)}, norm hand:{np.linalg.norm(hand_eigvec)}")
-  print(f"lib time:{end1-start}, hand time:{end2-end1}")
+  # # 手動実装
+  # S_box = gen_skew_symmetric(d)
+  # t_box = gen_parallel_vector(d)
+  # hand_eigval, hand_eigvec = min_non_zero_eigen(L, x0, p, S_box, t_box)
+  # end2 = time.time()
+  # print("library vs hand")
+  # print("Eigenvalue")
+  # print(f"lib:{lib_eigval}, hand:{hand_eigval}")
+  # print("Eigenvector")
+  # print(f"lib:{lib_eigvec}, hand:{hand_eigvec}")
+  # print("vLv")
+  # print(f"lib:{np.dot(lib_eigvec, np.dot(L, lib_eigvec))}, hand:{np.dot(hand_eigvec, np.dot(L, hand_eigvec))}")
+  # print(f"norm lib:{np.linalg.norm(lib_eigvec)}, norm hand:{np.linalg.norm(hand_eigvec)}")
+  print(f"hand time:{end1-start}")
 
 if __name__ == "__main__":
   test3()
