@@ -3,6 +3,7 @@ from stiffness_eigenvalue.visualize import custom_visualize
 import numpy as np
 import networkx as nx
 import rigidpy as rp
+
 # 簡単な半正定値行列でテスト（固有値があっているかも確認する固有値は8と1なので1が出力されてほしい）
 def test_1():
   L = np.array([[2,-1,0],[-1,2,-1],[0,-1,2]])

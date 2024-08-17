@@ -50,10 +50,10 @@ def test2():
 def test3():
   # 各定数
   d = 2
-  V = 10000
+  V = 100
   D = math.comb(d+1,2)
   # ランダムグラフの生成
-  G_comp = nx.random_regular_graph(10,V)
+  G_comp = nx.complete_graph(V)
   # 辺集合
   bonds = np.array(list(G_comp.edges()))
   # position of sites
@@ -65,7 +65,7 @@ def test3():
   # ライブラリーと手動実装の比較
   # ライブラリー
   start = time.time()
-  lib_eigvals, lib_eigvecs = scipy.sparse.linalg.eigsh(L, D+1)
+  lib_eigvals, lib_eigvecs = scipy.sparse.linalg.eigsh(L, D+1, which='SM')
   lib_eigval, lib_eigvec = lib_eigvals[D], lib_eigvecs[:,D] # 0 baseなのでD+1番目だがインデックスはDであることに注意
   end1 = time.time()
   # # 手動実装

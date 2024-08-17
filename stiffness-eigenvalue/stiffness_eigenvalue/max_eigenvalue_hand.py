@@ -36,12 +36,12 @@ def pseudo_ascent_dir(p, bonds, eigenvalue_current, eigenvector, dim, S_box, t_b
   L_plus = stiffness_matrix(p_plus,bonds)
   # Eigenvalue
   eigenvalue_plus, _ = min_non_zero_eigen(L_plus, eigenvector, p_plus, S_box, t_box)
-  # # -の場合(eigenvectorと逆方向に移動させる場合)（-の場合は省略して現在の値と比較する）
-  # p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
-  # # Stiffness matrix
-  # L_minus = stiffness_matrix(p_minus,bonds)
-  # # Eigenvalues
-  # eigen_vals_minus, _ = min_non_zero_eigen(L_minus, eigenvector, p_minus, S_box, t_box)
+  # -の場合(eigenvectorと逆方向に移動させる場合)（-の場合は省略して現在の値と比較する）
+  p_minus = p - EPSILON*eigenvector.reshape(-1, dim)
+  # Stiffness matrix
+  L_minus = stiffness_matrix(p_minus,bonds)
+  # Eigenvalues
+  eigen_vals_minus, _ = min_non_zero_eigen(L_minus, eigenvector, p_minus, S_box, t_box)
   if eigenvalue_plus >= eigenvalue_current:
     return 1
   else:
