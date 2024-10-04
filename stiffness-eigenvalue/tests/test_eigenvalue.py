@@ -50,7 +50,7 @@ def test2():
 def test3():
   # 各定数
   d = 2
-  V = 100
+  V = 10000
   D = math.comb(d+1,2)
   # ランダムグラフの生成
   G_comp = nx.complete_graph(V)
