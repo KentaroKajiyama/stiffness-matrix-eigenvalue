@@ -29,7 +29,7 @@ ALPHA = 2
 
 # Calculation for eigenvalues
 NON_ZERO_INDEX = 3
-MAX_ITER_FOR_EIGENVALUE = 1000
+MAX_ITER_FOR_EIGENVALUE = 100
 CHANGE_HUGE = 1000
 SWITCH = 1000
 ###################################################
