@@ -23,13 +23,13 @@ MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalue
 # Ascent Direct
 EPSILON = 0.05
 # Armijo Condition
-MAX_ITER_FOR_ARMIJO = 25
+MAX_ITER_FOR_ARMIJO = 20
 C1 = 0.10
 ROW = 0.77
 ALPHA = 2
 # Calculation for eigenvalues
 NON_ZERO_INDEX = 3
-MAX_ITER_FOR_EIGENVALUE = 100
+MAX_ITER_FOR_EIGENVALUE = 1000
 ###################################################
 
 # ライブラリーを用いてテスト
@@ -135,7 +135,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
     if check< 1e-7:
       break
   # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。
-  cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(ascend_vec, ascend_vec) - non_zero_smallest_eigenvalue_after
+  cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(np.ravel(ascend_vec), np.ravel(ascend_vec)) - non_zero_smallest_eigenvalue_after
   while(cd>0 and count < MAX_ITER_FOR_ARMIJO):
     # alphaの更新。1次減少ではなく、別の割合で更新する方法も考えられる
     alpha *= ROW 
@@ -152,7 +152,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
       check = eigen_vals_after[NON_ZERO_INDEX-1]
       if check< 1e-7:
         break
-    cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(ascend_vec, ascend_vec) - non_zero_smallest_eigenvalue_after
+    cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(np.ravel(ascend_vec), np.ravel(ascend_vec)) - non_zero_smallest_eigenvalue_after
     count +=1
   return alpha, non_zero_smallest_eigenvalue_after,len(non_zero_smallest_eigenvectors), p_after
 

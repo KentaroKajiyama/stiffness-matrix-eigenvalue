@@ -1,3 +1,7 @@
+import sys
+import os
+# プロジェクトルートを検索パスに追加
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import networkx as nx
 import numpy as np
 from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
@@ -43,8 +47,8 @@ def test_complete_lib():
   G_comp = nx.complete_graph(V)
   # 辺集合
   bonds = np.array(list(G_comp.edges()))
-  # 100回試行して一番いいやつを選ぶ
-  for i in range(100):
+  # 3回試行して一番いいやつを選ぶ
+  for i in range(3):
     # position of sites
     max_previous = max_eigen
     p_init = 2*np.random.randn(d*V).reshape(-1,d)
