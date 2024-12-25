@@ -1,6 +1,6 @@
 import networkx as nx
 import numpy as np
-from stiffness_eigenvalue.max_eigenvalue_lib_clean import max_p_eigenvalue_lib
+from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
 from old.max_eigenvalue_hand import max_p_eigenvalue_hand
 from old.max_eigenvalue_lib_legacy import max_p_eigenvalue_lib_legacy
 from stiffness_eigenvalue.visualize import plot_eigen_vals_and_alpha, custom_visualize
@@ -37,12 +37,13 @@ def test_complete_lib():
   # np.random.seed(1)
   # 各定数
   d = 2
-  V = 20
+  V = 10
   p = []; max_eigen = 0; eigen_val_box = []; alpha_box = []; multiplicity_box = [];eigen_record_box = []
   # 完全グラフの生成
   G_comp = nx.complete_graph(V)
   # 辺集合
   bonds = np.array(list(G_comp.edges()))
+  # 100回試行して一番いいやつを選ぶ
   for i in range(100):
     # position of sites
     max_previous = max_eigen
@@ -59,7 +60,8 @@ def test_complete_lib():
   plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_box)
   F = rp.framework(p, bonds)
   custom_visualize(F, label=f"opt, index value")
-  
+
+# 完全グラフでテスト（ライブラリを用いたもの、処理を並列化）
 def test_complete_lib_parallel():
     # np.random.seed(1)
     # 各定数
@@ -107,9 +109,8 @@ def test_complete_lib_parallel():
     plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_box)
     F = rp.framework(p, bonds)
     custom_visualize(F, label=f"opt, index value")
-  
 
-  # 完全グラフでテスト（ライブラリを用いたもの）（time: 200s~300s）=> Backtrackの更新回数を1回に、libraryを対称行列限定のものにするとと150s~170s程度に改善全体の1/4~1/2程度の時間をArmijo条件の反復に費やしていそう。
+# 完全グラフでテスト（ライブラリを用いたもの）（time: 200s~300s）=> Backtrackの更新回数を1回に、libraryを対称行列限定のものにするとと150s~170s程度に改善全体の1/4~1/2程度の時間をArmijo条件の反復に費やしていそう。
 def test_complete_lib_legacy():
   # np.random.seed(1)
   # 各定数
@@ -125,4 +126,3 @@ def test_complete_lib_legacy():
   
 if __name__ == "__main__":
   test_complete_lib()
-  
