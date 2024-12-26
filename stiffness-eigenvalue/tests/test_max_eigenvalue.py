@@ -41,7 +41,7 @@ def test_complete_lib():
   # np.random.seed(1)
   # 各定数
   d = 2
-  V = 6
+  V = 300
   p = []; max_eigen = 0; eigen_val_box = []; alpha_box = []; multiplicity_box = [];eigen_record_box = []
   # 完全グラフの生成
   G_comp = nx.complete_graph(V)
@@ -70,7 +70,7 @@ def test_complete_lib_parallel():
     # np.random.seed(1)
     # 各定数
     d = 2
-    V = 20
+    V = 300
     p = []
     max_eigen = 0
     eigen_val_box = []

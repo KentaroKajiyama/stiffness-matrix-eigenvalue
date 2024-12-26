@@ -24,12 +24,12 @@ MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalue
 EPSILON = 0.05
 # Armijo Condition
 MAX_ITER_FOR_ARMIJO = 20
-C1 = 0.20
+C1 = 0.7
 ROW = 0.77
 ALPHA = 2
 # Calculation for eigenvalues
 NON_ZERO_INDEX = 3
-MAX_ITER_FOR_EIGENVALUE = 1
+MAX_ITER_FOR_EIGENVALUE = 1500
 ###################################################
 
 # ライブラリーを用いてテスト
@@ -54,7 +54,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   # 辺集合
   bonds = np.array(list(G_regular.edges()))
   # pの正規化
-  p = p/np.linalg.norm(p)
+  # p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
   for i in range(MAX_ITER_FOR_EIGENVALUE):
     # alphaの初期化
@@ -62,7 +62,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
     # realizationの格納
     p_box.append(p)
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行って
-    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = pseudo_armijo(alpha, dim, p, bonds)
+    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = pseudo_armijo(alpha, dim, p, bonds, G_regular)
     # alphaの値を記録
     alpha_box.append(alpha)
     # 固有値・固有ベクトルの記録
@@ -91,7 +91,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 p has been normalized.
 """
-def pseudo_armijo(alpha, dim, p, bonds):
+def pseudo_armijo(alpha, dim, p, bonds, G):
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix
@@ -100,7 +100,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # ライブラリーの固有値計算の際に収束せず0固有値が現れない場合をカバー
   # 固有値の個数の1/3を取得してきて重複がないか後にチェックする
   while True:
-    eigen_vals, eigen_vecs = eigsh(L, k=L.shape[0]//3, which='SM', tol=1e-5, ncv=30)
+    eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-5, ncv=20)
     non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
     check = eigen_vals[NON_ZERO_INDEX-1]
     if check< 1e-5:
@@ -117,7 +117,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # eigenvector
   non_zero_smallest_eigenvector = non_zero_smallest_eigenvectors[0]
   # 上昇方向の計算
-  ascend_vec = ascend_dir(p, non_zero_smallest_eigenvector, dim)
+  ascend_vec = ascend_dir(p, non_zero_smallest_eigenvector, dim, G)
   # 更新後のrealization p_after　あとは上昇方向にどれだけ動かすかを決定する
   p_after = p+alpha*ascend_vec
   # realizationを正規化して更新
@@ -128,7 +128,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # 固有値が重複する場合にカウントする、非ゼロ固有値が0に近い場合、一緒にグルーピングされてしまう恐れあり
   while True:
     # Eigenvalues
-    eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=30)
+    eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
     # d=2 4th minimum eigenvalue
     non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
     check = eigen_vals_after[NON_ZERO_INDEX-1]
@@ -146,7 +146,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
     L_after = stiffness_matrix_sparce(p_after, bonds)
     while True:
       # Eigenvalues
-      eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=30)
+      eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
       # d=2 4th minimum eigenvalue
       non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
       check = eigen_vals_after[NON_ZERO_INDEX-1]
@@ -165,7 +165,7 @@ p has been normalized.
 
 output: ascend_vec : [[ascend_vec(1)_1,ascend_vec(1)_2,...,ascend_vec(1)_d],...,[ascend_vec(n)_1,ascend_vec(n)_2,...,ascend_vec(n)_d]] (shape: (n,d))
 """
-def ascend_dir(p, eigenvector, dim):
+def ascend_dir(p, eigenvector, dim, G):
   n = p.shape[0]
   ascend_vec = np.zeros((n,dim))
   for k in range(n):
@@ -173,39 +173,91 @@ def ascend_dir(p, eigenvector, dim):
       A = []
       row_indices = []
       col_indices = []
-      # d(k-1)-1列目までとdk列目からdn列目まで
-      for j in range(0,n):
-        for i in range(dim):
-          if i == l:
-            A.append(4*(p[k][i]-p[j][i]))
-            row_indices.append(dim*k+i)
-            col_indices.append(dim*j+l)
-          else:
-            A.append(2*(p[k][i]-p[j][i]))
-            row_indices.append(dim*k+i)
-            col_indices.append(dim*j+l)
-        for i in range(dim):
-          if i != l:
-            A.append(2*(p[k][i]-p[j][i]))
-            row_indices.append(dim*k+l)
-            col_indices.append(dim*j+i)
+      # L_dot(ik) 
+      # if row = dim*i+l, col = dim*k+l, then, 4(p(k)-p(i))_l, 
+      # elif row = dim*i+s, col = dim*k+l, then 2(p(k)-p(i))_s, 
+      # elif row = dim*i+l, col = dim*k+t, then, 2(p(k)-p(i))_t 
+      for i in range(0,n):
+        if i == k:
+          continue
+        A.append(4*(p[k][l]-p[i][l]))
+        row_indices.append(dim*i+l)
+        col_indices.append(dim*k+l)
+        for s in range(dim):
+          if s == k:
+            continue
+          A.append(2*(p[k][s]-p[i][s]))
+          row_indices.append(dim*i+s)
+          col_indices.append(dim*k+l)
+        for t in range(dim):
+          if t == l:
+            continue
+          A.append(2*(p[k][t]-p[i][t]))
+          row_indices.append(dim*i+l)
+          col_indices.append(dim*k+t)
+      # L_dot(ki) 
+      # if row = dim*k+l, col = dim*i+l, then, 4(p(k)-p(i))_l, 
+      # elif row = dim*k+s, col = dim*i+l, then 2(p(k)-p(i))_s, 
+      # elif row = dim*k+l, col = dim*i+t, then, 2(p(k)-p(i))_t 
+      for i in range(0,n):
+        if i == k:
+          continue
+        A.append(4*(p[k][l]-p[i][l]))
+        row_indices.append(dim*k+l)
+        col_indices.append(dim*i+l)
+        for s in range(dim):
+          if s == k:
+            continue
+          A.append(2*(p[k][s]-p[i][s]))
+          row_indices.append(dim*k+s)
+          col_indices.append(dim*i+l)
+        for t in range(dim):
+          if t == l:
+            continue
+          A.append(2*(p[k][t]-p[i][t]))
+          row_indices.append(dim*k+l)
+          col_indices.append(dim*i+t)
+      # L_dot(ii) where i in N_G(k) 
+      # if row = col = dim*i+l, then, 2(p(k)-p(i))_l, 
+      # elif row = dim*i+s, col = dim*i+l, then, (p(k)-p(i))_s, 
+      # elif row = dim*i+l, col = dim*i+t, then, (p(k)-p(i))_t
+      for i in G.neighbors(k):
+        A.append(2*(p[k][l]-p[i][l]))
+        row_indices.append(dim*i+l)
+        col_indices.append(dim*i+l)
+        for s in range(dim):
+          if s == l:
+            continue
+          A.append(p[k][s]-p[i][s])
+          row_indices.append(dim*i+s)
+          col_indices.append(dim*i+l)
+        for t in range(dim):
+          if t == l:
+            continue
+          A.append(p[k][t]-p[i][t])
+          row_indices.append(dim*i+l)
+          col_indices.append(dim*i+t)
+      # L_dot(kk) 
+      # if row = col = dim*k+l, then, sum of 2(p(k)-p(j))_l over j in N_G(k), 
+      # elif row = dim*k+s, col = dim*k+l, then, sum of (p(k)-p(j))_s over j in N_G(k), 
+      # elif row = dim*k+l, col = dim*k+t, then, sum of (p(k)-p(j))_t over j in N_G(k)
       # d(k-1)列目からdk-1列目まで
-      for i_1 in range(n):
-        for i_2 in range(dim):
-          if i_2 == l:
-            A.append(4*(p[i_1][i_2]-p[k][i_2]))
-            row_indices.append(dim*i_1+i_2)
-            col_indices.append(dim*k+l)
-          else:
-            A.append(2*(p[i_1][i_2]-p[k][i_2]))
-            row_indices.append(dim*i_1+i_2)
-            col_indices.append(dim*k+l)
-        for i_2 in range(dim):
-          if i_2 != l:
-            A.append(2*(p[i_1][i_2]-p[k][i_2]))
-            row_indices.append(dim*i_1+l)
-            col_indices.append(dim*k+i_2)
-      # 微分した行列の片割れ L_dot_half
+      A.append(sum([2*(p[k][l]-p[j][l]) for j in G.neighbors(k)]))
+      row_indices.append(dim*k+l)
+      col_indices.append(dim*k+l)
+      for s in range(dim):
+        if s == l:
+          continue
+        A.append(sum([p[k][s]-p[j][s] for j in G.neighbors(k)]))
+        row_indices.append(dim*k+s)
+        col_indices.append(dim*k+l)
+      for t in range(dim):
+        if t == l:
+          continue
+        A.append(sum([p[k][t]-p[j][t] for j in G.neighbors(k)]))
+        row_indices.append(dim*k+l)
+        col_indices.append(dim*k+t)
+      # Generate the sparse matrix
       diff_L = csr_matrix((A, (row_indices, col_indices)), shape=(dim*n, dim*n))
       # 上昇方向の計算(p_d(k-1)+lによる微分)
       ascend_vec_element = np.dot(eigenvector, diff_L.dot(eigenvector))
