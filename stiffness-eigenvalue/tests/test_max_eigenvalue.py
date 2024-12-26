@@ -41,14 +41,14 @@ def test_complete_lib():
   # np.random.seed(1)
   # 各定数
   d = 2
-  V = 10
+  V = 6
   p = []; max_eigen = 0; eigen_val_box = []; alpha_box = []; multiplicity_box = [];eigen_record_box = []
   # 完全グラフの生成
   G_comp = nx.complete_graph(V)
   # 辺集合
   bonds = np.array(list(G_comp.edges()))
   # 3回試行して一番いいやつを選ぶ
-  for i in range(3):
+  for i in range(1):
     # position of sites
     max_previous = max_eigen
     p_init = 2*np.random.randn(d*V).reshape(-1,d)
@@ -60,7 +60,7 @@ def test_complete_lib():
       eigen_val_box = eigen_val_box_current
       alpha_box = alpha_box_current
       multiplicity_box = multiplicity_box_current
-  plt.plot(eigen_record_box)
+  # plt.plot(eigen_record_box)  
   plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_box)
   F = rp.framework(p, bonds)
   custom_visualize(F, label=f"opt, index value")

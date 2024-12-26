@@ -24,12 +24,12 @@ MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalue
 EPSILON = 0.05
 # Armijo Condition
 MAX_ITER_FOR_ARMIJO = 20
-C1 = 0.10
+C1 = 0.20
 ROW = 0.77
 ALPHA = 2
 # Calculation for eigenvalues
 NON_ZERO_INDEX = 3
-MAX_ITER_FOR_EIGENVALUE = 1000
+MAX_ITER_FOR_EIGENVALUE = 1
 ###################################################
 
 # ライブラリーを用いてテスト
@@ -100,7 +100,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # ライブラリーの固有値計算の際に収束せず0固有値が現れない場合をカバー
   # 固有値の個数の1/3を取得してきて重複がないか後にチェックする
   while True:
-    eigen_vals, eigen_vecs = eigsh(L, k=L.shape[0]//3, which='SM', tol=1e-5, ncv=20)
+    eigen_vals, eigen_vecs = eigsh(L, k=L.shape[0]//3, which='SM', tol=1e-5, ncv=30)
     non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
     check = eigen_vals[NON_ZERO_INDEX-1]
     if check< 1e-5:
@@ -128,7 +128,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
   # 固有値が重複する場合にカウントする、非ゼロ固有値が0に近い場合、一緒にグルーピングされてしまう恐れあり
   while True:
     # Eigenvalues
-    eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+    eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=30)
     # d=2 4th minimum eigenvalue
     non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
     check = eigen_vals_after[NON_ZERO_INDEX-1]
@@ -146,7 +146,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
     L_after = stiffness_matrix_sparce(p_after, bonds)
     while True:
       # Eigenvalues
-      eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+      eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=30)
       # d=2 4th minimum eigenvalue
       non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
       check = eigen_vals_after[NON_ZERO_INDEX-1]
@@ -156,7 +156,7 @@ def pseudo_armijo(alpha, dim, p, bonds):
     count +=1
   return alpha, non_zero_smallest_eigenvalue_after,len(non_zero_smallest_eigenvectors), p_after
 
-# 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）
+# 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）TODO:中身があっているかもう一度確認する。
 """
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 eigenvector : eigenvector of the stiffness matrix
@@ -173,27 +173,40 @@ def ascend_dir(p, eigenvector, dim):
       A = []
       row_indices = []
       col_indices = []
-      # d(k-1)-1列目まで
-      for j in range(0,k):
+      # d(k-1)-1列目までとdk列目からdn列目まで
+      for j in range(0,n):
         for i in range(dim):
-          A.append(2*(p[k][i]-p[j][i]))
-          row_indices.append(dim*k+i)
-          col_indices.append(dim*j+l)
+          if i == l:
+            A.append(4*(p[k][i]-p[j][i]))
+            row_indices.append(dim*k+i)
+            col_indices.append(dim*j+l)
+          else:
+            A.append(2*(p[k][i]-p[j][i]))
+            row_indices.append(dim*k+i)
+            col_indices.append(dim*j+l)
+        for i in range(dim):
+          if i != l:
+            A.append(2*(p[k][i]-p[j][i]))
+            row_indices.append(dim*k+l)
+            col_indices.append(dim*j+i)
       # d(k-1)列目からdk-1列目まで
-      for i_1 in range(k):
+      for i_1 in range(n):
         for i_2 in range(dim):
-          A.append(2*(p[i_1][i_2]-p[k][i_2]))
-          row_indices.append(dim*i_1+i_2)
-          col_indices.append(dim*k+l)
-      # dk列目からdn列目まで
-      for j in range(k+1,n):
-        for i in range(dim):
-          A.append(2*(p[k][i]-p[j][i]))
-          row_indices.append(dim*k+i)
-          col_indices.append(dim*j+l)
+          if i_2 == l:
+            A.append(4*(p[i_1][i_2]-p[k][i_2]))
+            row_indices.append(dim*i_1+i_2)
+            col_indices.append(dim*k+l)
+          else:
+            A.append(2*(p[i_1][i_2]-p[k][i_2]))
+            row_indices.append(dim*i_1+i_2)
+            col_indices.append(dim*k+l)
+        for i_2 in range(dim):
+          if i_2 != l:
+            A.append(2*(p[i_1][i_2]-p[k][i_2]))
+            row_indices.append(dim*i_1+l)
+            col_indices.append(dim*k+i_2)
       # 微分した行列の片割れ L_dot_half
-      diff_L_half = csr_matrix((A, (row_indices, col_indices)), shape=(dim*n, dim*n))
-      diff_L = diff_L_half + diff_L_half.T
+      diff_L = csr_matrix((A, (row_indices, col_indices)), shape=(dim*n, dim*n))
       # 上昇方向の計算(p_d(k-1)+lによる微分)
       ascend_vec_element = np.dot(eigenvector, diff_L.dot(eigenvector))
       ascend_vec[k][l] = ascend_vec_element
