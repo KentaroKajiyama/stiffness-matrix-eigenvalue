@@ -165,101 +165,124 @@ p has been normalized.
 
 output: ascend_vec : [[ascend_vec(1)_1,ascend_vec(1)_2,...,ascend_vec(1)_d],...,[ascend_vec(n)_1,ascend_vec(n)_2,...,ascend_vec(n)_d]] (shape: (n,d))
 """
-def ascend_dir(p, eigenvector, dim, G):
+def ascend_dir(p, x, dim, G):
+  """
+  p: 座標情報 (n x dim)
+  x: 固有ベクトル (次元は dim*n だと仮定)
+  dim: 次元
+  G: ネットワーク (neighbors(k) で頂点kの近傍を返す)
+
+  戻り値
+  -------
+  ascend_vec : (n x dim) のnumpy配列
+  """
   n = p.shape[0]
-  ascend_vec = np.zeros((n,dim))
+  ascend_vec = np.zeros((n, dim), dtype=np.float64)
+
+  # x_i に対応する index は行列L の (i座標, s座標) を 1次元化したもの:
+  # たとえば i行目に対応するものは [dim*i, dim*i+1, ..., dim*i + (dim-1)]
+  # という対応づけを想定
+  # xは (dim*n,) なので、x[dim*i + s] が「頂点 i の次元 s 成分」に対応
+
   for k in range(n):
+    # k番目頂点に対して
+    neighbors_k = list(G.neighbors(k))
+
     for l in range(dim):
-      A = []
-      row_indices = []
-      col_indices = []
-      # L_dot(ik) 
-      # if row = dim*i+l, col = dim*k+l, then, 4(p(k)-p(i))_l, 
-      # elif row = dim*i+s, col = dim*k+l, then 2(p(k)-p(i))_s, 
-      # elif row = dim*i+l, col = dim*k+t, then, 2(p(k)-p(i))_t 
-      for i in range(0,n):
-        if i == k:
-          continue
-        A.append(4*(p[k][l]-p[i][l]))
-        row_indices.append(dim*i+l)
-        col_indices.append(dim*k+l)
+      # (k,l)に対する微分
+      val_kl = 0.0  # ここに x^T (∂L/∂p[k][l]) x を累積
+
+      # ==========================
+      # 1) L_dot(ik) の寄与 ただし、i \in N_G(k)
+      # ==========================
+      for i in neighbors_k:
+        # -- (row, col) = (dim*i + l, dim*k + l)
+        dL_ik_ll = 4*(p[k][l] - p[i][l])
+        val_kl += dL_ik_ll * x[dim*i + l] * x[dim*k + l]
+
+        # -- (row, col) = (dim*i + s, dim*k + l)
         for s in range(dim):
           if s == l:
             continue
-          A.append(2*(p[k][s]-p[i][s]))
-          row_indices.append(dim*i+s)
-          col_indices.append(dim*k+l)
+          dL_ik_sl = 2*(p[k][s] - p[i][s])
+          val_kl += dL_ik_sl * x[dim*i + s] * x[dim*k + l]
+
+        # -- (row, col) = (dim*i + l, dim*k + t)
         for t in range(dim):
           if t == l:
             continue
-          A.append(2*(p[k][t]-p[i][t]))
-          row_indices.append(dim*i+l)
-          col_indices.append(dim*k+t)
-      # L_dot(ki) 
-      # if row = dim*k+l, col = dim*i+l, then, 4(p(k)-p(i))_l, 
-      # elif row = dim*k+s, col = dim*i+l, then 2(p(k)-p(i))_s, 
-      # elif row = dim*k+l, col = dim*i+t, then, 2(p(k)-p(i))_t 
-      for i in range(0,n):
-        if i == k:
-          continue
-        A.append(4*(p[k][l]-p[i][l]))
-        row_indices.append(dim*k+l)
-        col_indices.append(dim*i+l)
+          dL_ik_lt = 2*(p[k][t] - p[i][t])
+          val_kl += dL_ik_lt * x[dim*i + l] * x[dim*k + t]
+
+      # ==========================
+      # 2) L_dot(ki) の寄与 ただし、i \in N_G(k)
+      # ==========================
+      for i in neighbors_k:
+        # -- (row, col) = (dim*k + l, dim*i + l)
+        dL_ki_ll = 4*(p[k][l] - p[i][l])
+        val_kl += dL_ki_ll * x[dim*k + l] * x[dim*i + l]
+
+        # -- (row, col) = (dim*k + s, dim*i + l)
         for s in range(dim):
           if s == l:
             continue
-          A.append(2*(p[k][s]-p[i][s]))
-          row_indices.append(dim*k+s)
-          col_indices.append(dim*i+l)
+          dL_ki_sl = 2*(p[k][s] - p[i][s])
+          val_kl += dL_ki_sl * x[dim*k + s] * x[dim*i + l]
+
+        # -- (row, col) = (dim*k + l, dim*i + t)
         for t in range(dim):
           if t == l:
             continue
-          A.append(2*(p[k][t]-p[i][t]))
-          row_indices.append(dim*k+l)
-          col_indices.append(dim*i+t)
-      # L_dot(ii) where i in N_G(k) 
-      # if row = col = dim*i+l, then, 2(p(k)-p(i))_l, 
-      # elif row = dim*i+s, col = dim*i+l, then, (p(k)-p(i))_s, 
-      # elif row = dim*i+l, col = dim*i+t, then, (p(k)-p(i))_t
-      for i in G.neighbors(k):
-        A.append(2*(p[k][l]-p[i][l]))
-        row_indices.append(dim*i+l)
-        col_indices.append(dim*i+l)
+          dL_ki_lt = 2*(p[k][t] - p[i][t])
+          val_kl += dL_ki_lt * x[dim*k + l] * x[dim*i + t]
+
+      # ==========================
+      # 3) L_dot(ii) の寄与
+      #    i in N_G(k)
+      # ==========================
+      for i in neighbors_k:
+        # (row=col=dim*i + l)
+        dL_ii_ll = 2*(p[k][l] - p[i][l])
+        val_kl += dL_ii_ll * x[dim*i + l] * x[dim*i + l]
+
+        # (row=dim*i + s, col=dim*i + l)
         for s in range(dim):
           if s == l:
             continue
-          A.append(p[k][s]-p[i][s])
-          row_indices.append(dim*i+s)
-          col_indices.append(dim*i+l)
+          dL_ii_sl = (p[k][s] - p[i][s])
+          val_kl += dL_ii_sl * x[dim*i + s] * x[dim*i + l]
+
+        # (row=dim*i + l, col=dim*i + t)
         for t in range(dim):
           if t == l:
             continue
-          A.append(p[k][t]-p[i][t])
-          row_indices.append(dim*i+l)
-          col_indices.append(dim*i+t)
-      # L_dot(kk) 
-      # if row = col = dim*k+l, then, sum of 2(p(k)-p(j))_l over j in N_G(k), 
-      # elif row = dim*k+s, col = dim*k+l, then, sum of (p(k)-p(j))_s over j in N_G(k), 
-      # elif row = dim*k+l, col = dim*k+t, then, sum of (p(k)-p(j))_t over j in N_G(k)
-      # d(k-1)列目からdk-1列目まで
-      A.append(sum([2*(p[k][l]-p[j][l]) for j in G.neighbors(k)]))
-      row_indices.append(dim*k+l)
-      col_indices.append(dim*k+l)
+          dL_ii_lt = (p[k][t] - p[i][t])
+          val_kl += dL_ii_lt * x[dim*i + l] * x[dim*i + t]
+
+      # ==========================
+      # 4) L_dot(kk) の寄与
+      # ==========================
+      # (row=col=dim*k + l)
+      dL_kk_ll = sum([2*(p[k][l] - p[j][l]) for j in neighbors_k])
+      val_kl += dL_kk_ll * x[dim*k + l] * x[dim*k + l]
+
+      # (row=dim*k + s, col=dim*k + l)
       for s in range(dim):
         if s == l:
           continue
-        A.append(sum([p[k][s]-p[j][s] for j in G.neighbors(k)]))
-        row_indices.append(dim*k+s)
-        col_indices.append(dim*k+l)
+        dL_kk_sl = sum([p[k][s] - p[j][s] for j in neighbors_k])
+        val_kl += dL_kk_sl * x[dim*k + s] * x[dim*k + l]
+
+      # (row=dim*k + l, col=dim*k + t)
       for t in range(dim):
         if t == l:
           continue
-        A.append(sum([p[k][t]-p[j][t] for j in G.neighbors(k)]))
-        row_indices.append(dim*k+l)
-        col_indices.append(dim*k+t)
-      # Generate the sparse matrix
-      diff_L = csr_matrix((A, (row_indices, col_indices)), shape=(dim*n, dim*n))
-      # 上昇方向の計算(p_d(k-1)+lによる微分)
-      ascend_vec_element = np.dot(eigenvector, diff_L.dot(eigenvector))
-      ascend_vec[k][l] = ascend_vec_element
+        dL_kk_lt = sum([p[k][t] - p[j][t] for j in neighbors_k])
+        val_kl += dL_kk_lt * x[dim*k + l] * x[dim*k + t]
+
+      # ==========================
+      # 結果を格納
+      # ==========================
+      ascend_vec[k, l] = val_kl
+
   return ascend_vec
