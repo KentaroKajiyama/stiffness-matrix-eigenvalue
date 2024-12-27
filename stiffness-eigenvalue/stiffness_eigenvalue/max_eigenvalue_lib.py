@@ -78,6 +78,8 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   max_index = np.argmax(eigen_val_box)
   t = time.time()-start
   print(f"Elapsed time for eigenvalue calculation:{t}")
+  print("max_index:",max_index)
+  print("max_eigenvalue:",eigen_val_box[max_index])
   # visual_eigen = Trueの場合に固有値の推移の様子をプロットする。テスト用
   if visual_eigen:
     plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_vec_box)
