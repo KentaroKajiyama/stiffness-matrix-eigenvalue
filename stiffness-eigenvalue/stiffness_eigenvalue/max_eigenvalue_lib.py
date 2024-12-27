@@ -24,7 +24,7 @@ MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalue
 EPSILON = 0.05
 # Armijo Condition
 MAX_ITER_FOR_ARMIJO = 20
-C1 = 0.7
+C1 = 0.2
 ROW = 0.77
 ALPHA = 2
 # Calculation for eigenvalues
@@ -184,7 +184,7 @@ def ascend_dir(p, eigenvector, dim, G):
         row_indices.append(dim*i+l)
         col_indices.append(dim*k+l)
         for s in range(dim):
-          if s == k:
+          if s == l:
             continue
           A.append(2*(p[k][s]-p[i][s]))
           row_indices.append(dim*i+s)
@@ -206,7 +206,7 @@ def ascend_dir(p, eigenvector, dim, G):
         row_indices.append(dim*k+l)
         col_indices.append(dim*i+l)
         for s in range(dim):
-          if s == k:
+          if s == l:
             continue
           A.append(2*(p[k][s]-p[i][s]))
           row_indices.append(dim*k+s)
