@@ -5,8 +5,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import networkx as nx
 import numpy as np
 from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
-from old.max_eigenvalue_hand import max_p_eigenvalue_hand
-from old.max_eigenvalue_lib_legacy import max_p_eigenvalue_lib_legacy
 from stiffness_eigenvalue.visualize import plot_eigen_vals_and_alpha, custom_visualize
 import rigidpy as rp
 from matplotlib import pyplot as plt
