@@ -5,7 +5,10 @@ from stiffness_eigenvalue.framework import stiffness_matrix_sparce
 from stiffness_eigenvalue.visualize import custom_visualize, plot_eigen_vals_and_alpha
 import math
 import time
-from scipy.sparse import csr_matrix
+from dotenv import load_dotenv
+import os
+
+load_dotenv("stiffness-eigenvalue/config/.env")
 
 ##################################################
 """
@@ -21,15 +24,15 @@ NON_ZERO_INDEX : The index of the non zero eigenvalue of a stiffness matrix.
 MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalues.
 """
 # Ascent Direct
-EPSILON = 0.05
+EPSILON = float(os.getenv("EPSILON"))
 # Armijo Condition
-MAX_ITER_FOR_ARMIJO = 20
-C1 = 0.2
-ROW = 0.77
-ALPHA = 2
+MAX_ITER_FOR_ARMIJO = int(os.getenv("MAX_ITER_FOR_ARMIJO"))
+C1 = float(os.getenv("C1"))
+ROW = float(os.getenv("ROW"))
+ALPHA = float(os.getenv("ALPHA"))
 # Calculation for eigenvalues
-NON_ZERO_INDEX = 3
-MAX_ITER_FOR_EIGENVALUE = 1500
+NON_ZERO_INDEX = int(os.getenv("NON_ZERO_INDEX"))
+MAX_ITER_FOR_EIGENVALUE = int(os.getenv("MAX_ITER_FOR_EIGENVALUE"))
 ###################################################
 
 # ライブラリーを用いてテスト
@@ -62,7 +65,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
     # realizationの格納
     p_box.append(p)
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行って
-    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = pseudo_armijo(alpha, dim, p, bonds, G_regular)
+    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = pseudo_armijo(alpha, p, bonds, G_regular)
     # alphaの値を記録
     alpha_box.append(alpha)
     # 固有値・固有ベクトルの記録
@@ -91,7 +94,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 p has been normalized.
 """
-def pseudo_armijo(alpha, dim, p, bonds, G):
+def pseudo_armijo(alpha, p, bonds, G):
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix
@@ -117,7 +120,7 @@ def pseudo_armijo(alpha, dim, p, bonds, G):
   # eigenvector
   non_zero_smallest_eigenvector = non_zero_smallest_eigenvectors[0]
   # 上昇方向の計算
-  ascend_vec = ascend_dir(p, non_zero_smallest_eigenvector, dim, G)
+  ascend_vec = ascend_dir(p, non_zero_smallest_eigenvector, G)
   # 更新後のrealization p_after　あとは上昇方向にどれだけ動かすかを決定する
   p_after = p+alpha*ascend_vec
   # realizationを正規化して更新
@@ -165,7 +168,7 @@ p has been normalized.
 
 output: ascend_vec : [[ascend_vec(1)_1,ascend_vec(1)_2,...,ascend_vec(1)_d],...,[ascend_vec(n)_1,ascend_vec(n)_2,...,ascend_vec(n)_d]] (shape: (n,d))
 """
-def ascend_dir(p, x, dim, G):
+def ascend_dir(p, x, G):
   """
   p: 座標情報 (n x dim)
   x: 固有ベクトル (次元は dim*n だと仮定)
@@ -177,6 +180,7 @@ def ascend_dir(p, x, dim, G):
   ascend_vec : (n x dim) のnumpy配列
   """
   n = p.shape[0]
+  dim = p.shape[1]
   ascend_vec = np.zeros((n, dim), dtype=np.float64)
 
   # x_i に対応する index は行列L の (i座標, s座標) を 1次元化したもの:
