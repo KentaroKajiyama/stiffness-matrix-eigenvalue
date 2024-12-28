@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 import concurrent.futures
 from tqdm import tqdm
 from dotenv import load_dotenv
+from stiffness_eigenvalue.framework import framework
 
 load_dotenv("stiffness-eigenvalue/config/.env")
 
@@ -39,7 +40,8 @@ def test_complete_lib():
       alpha_box = alpha_box_current
       multiplicity_box = multiplicity_box_current  
   plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_box)
-  F = rp.framework(p, bonds)
+  # サイズが大きいときにはmemory errorが出るので注意
+  F = framework(p, bonds)
   custom_visualize(F, label=f"opt, index value")
 
 # 完全グラフでテスト（ライブラリを用いたもの、処理を並列化）
