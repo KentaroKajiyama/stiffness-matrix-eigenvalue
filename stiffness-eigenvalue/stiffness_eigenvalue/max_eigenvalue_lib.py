@@ -7,6 +7,7 @@ import math
 import time
 from dotenv import load_dotenv
 import os
+from tqdm import tqdm
 
 load_dotenv("stiffness-eigenvalue/config/.env")
 
@@ -59,7 +60,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   # pの正規化
   # p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
-  for i in range(MAX_ITER_FOR_EIGENVALUE):
+  for i in tqdm(range(MAX_ITER_FOR_EIGENVALUE), desc="Calculating eigenvalues"):
     # alphaの初期化
     alpha = ALPHA
     # realizationの格納
@@ -77,7 +78,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   # 最大値を取るインデックス
   max_index = np.argmax(eigen_val_box)
   t = time.time()-start
-  print(f"Elapsed time for eigenvalue calculation:{t}")
+  print(f"Elapsed time for eigenvalue calculation:{t/60:.1f} [min]")
   print("max_index:",max_index)
   print("max_eigenvalue:",eigen_val_box[max_index])
   # visual_eigen = Trueの場合に固有値の推移の様子をプロットする。テスト用
@@ -115,7 +116,7 @@ def pseudo_armijo(alpha, p, bonds, G):
   matching_indices = np.where(np.isclose(eigen_vals, non_zero_smallest_eigenvalue, atol=1e-5))[0]
   if len(matching_indices) > 1:
     print(f"matching_indices:{matching_indices}")
-    for i in matching_indices:
+    for i in len(matching_indices):
       print(f"index:{matching_indices[i]}, eigenvalue:{eigen_vals[matching_indices[i]]}")
   for index in matching_indices:
     non_zero_smallest_eigenvectors.append(eigen_vecs[:, index])
