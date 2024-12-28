@@ -8,6 +8,7 @@ import time
 from dotenv import load_dotenv
 import os
 from tqdm import tqdm
+from rich.progress import track
 
 load_dotenv("stiffness-eigenvalue/config/.env")
 
@@ -60,7 +61,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   # pの正規化
   # p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
-  for i in tqdm(range(MAX_ITER_FOR_EIGENVALUE), desc="Calculating eigenvalues"):
+  for i in track(range(MAX_ITER_FOR_EIGENVALUE), description="Calculating eigenvalues"):
     # alphaの初期化
     alpha = ALPHA
     # realizationの格納
