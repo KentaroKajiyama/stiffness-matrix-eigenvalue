@@ -85,6 +85,7 @@ def objective_sparce(x, L):
   x.flatten()
   Lx = L.dot(x)
   return np.dot(x.T, Lx) / (norm_x**2)
+
 def objective_grad_sparce(x, L):
   norm_x = np.linalg.norm(x)
   if norm_x <= EPS_OBJ:

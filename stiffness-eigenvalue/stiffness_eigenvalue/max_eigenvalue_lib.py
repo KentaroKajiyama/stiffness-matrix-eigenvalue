@@ -15,8 +15,6 @@ load_dotenv("stiffness-eigenvalue/config/.env")
 ##################################################
 """
 Hyperparameter
-(Ascent Direct)
-EPSILON : A small constant number to make 
 (Armijo Condition)
 MAX_ITER_FOR_ARMIJO : The number of the max iteration for Armijo condition.
 C1 : The constant for the Armijo condition
@@ -25,8 +23,6 @@ ROW : Decreasing ratio for Armijo.
 NON_ZERO_INDEX : The index of the non zero eigenvalue of a stiffness matrix.
 MAX_ITER_FOR_EIGENVALUE : The number of the iteration for calculating eigenvalues.
 """
-# Ascent Direct
-EPSILON = float(os.getenv("EPSILON"))
 # Armijo Condition
 MAX_ITER_FOR_ARMIJO = int(os.getenv("MAX_ITER_FOR_ARMIJO"))
 C1 = float(os.getenv("C1"))
@@ -37,8 +33,7 @@ NON_ZERO_INDEX = int(os.getenv("NON_ZERO_INDEX"))
 MAX_ITER_FOR_EIGENVALUE = int(os.getenv("MAX_ITER_FOR_EIGENVALUE"))
 ###################################################
 
-# ライブラリーを用いてテスト
-# ライブラリを用いて直接固有値全てを計算し、最小非ゼロ固有値のみを取り出すG:k-regular graph, p:realization, eps: 近似する際のeps
+# ライブラリを用いて固有値をNON_ZERO_INDEX+1個計算し、最小非ゼロ固有値のみを取り出す G:k-regular graph, p:realization
 """
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 """
@@ -67,7 +62,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
     # realizationの格納
     p_box.append(p)
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行って
-    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = pseudo_armijo(alpha, p, bonds, G_regular)
+    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = armijo(alpha, p, bonds, G_regular)
     # alphaの値を記録
     alpha_box.append(alpha)
     # 固有値・固有ベクトルの記録
@@ -98,7 +93,7 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 p has been normalized.
 """
-def pseudo_armijo(alpha, p, bonds, G):
+def armijo(alpha, p, bonds, G):
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix
@@ -107,17 +102,18 @@ def pseudo_armijo(alpha, p, bonds, G):
   # ライブラリーの固有値計算の際に収束せず0固有値が現れない場合をカバー
   # 固有値の個数の1/3を取得してきて重複がないか後にチェックする
   while True:
-    eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-5, ncv=20)
+    # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
+    eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-2)
     non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
     check = eigen_vals[NON_ZERO_INDEX-1]
     if check< 1e-5:
       break
   non_zero_smallest_eigenvectors = []
   # 固有値が重複する場合にカウントする、非ゼロ固有値が0に近い場合、一緒にグルーピングされてしまう恐れあり
-  matching_indices = np.where(np.isclose(eigen_vals, non_zero_smallest_eigenvalue, atol=1e-5))[0]
+  matching_indices = np.where(np.isclose(eigen_vals, non_zero_smallest_eigenvalue, atol=1e-2))[0]
   if len(matching_indices) > 1:
     print(f"matching_indices:{matching_indices}")
-    for i in len(matching_indices):
+    for i in range(len(matching_indices)):
       print(f"index:{matching_indices[i]}, eigenvalue:{eigen_vals[matching_indices[i]]}")
   for index in matching_indices:
     non_zero_smallest_eigenvectors.append(eigen_vecs[:, index])
@@ -125,7 +121,7 @@ def pseudo_armijo(alpha, p, bonds, G):
   non_zero_smallest_eigenvector = non_zero_smallest_eigenvectors[0]
   # 上昇方向の計算
   ascend_vec = ascend_dir(p, non_zero_smallest_eigenvector, G)
-  # 更新後のrealization p_after　あとは上昇方向にどれだけ動かすかを決定する
+  # 更新後のrealization p_after あとは上昇方向にどれだけ動かすかを決定する
   p_after = p+alpha*ascend_vec
   # realizationを正規化して更新
   p_after = p_after/np.linalg.norm(p_after)
@@ -134,11 +130,13 @@ def pseudo_armijo(alpha, p, bonds, G):
   # 更新後の固有値計算
   # 固有値が重複する場合にカウントする、非ゼロ固有値が0に近い場合、一緒にグルーピングされてしまう恐れあり
   while True:
-    # Eigenvalues
-    eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+    # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
+    # Eigenvalues 値が小さい順に取得
+    eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', v0=non_zero_smallest_eigenvector, tol=1e-2)
     # d=2 4th minimum eigenvalue
     non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
     check = eigen_vals_after[NON_ZERO_INDEX-1]
+    # 固有値計算でエラーなく、NON_ZERO_INDEX-1番目がゼロ固有値であるかをチェック
     if check< 1e-7:
       break
   # non_zero_smallest_eigenvectorを上昇方向としているため、これを勾配と見てArmijo条件を適用する。
@@ -152,18 +150,20 @@ def pseudo_armijo(alpha, p, bonds, G):
     # Stiffness matrix
     L_after = stiffness_matrix_sparce(p_after, bonds)
     while True:
-      # Eigenvalues
-      eigen_vals_after, eigen_vecs_after = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+      # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
+      # Eigenvalues 値が小さい順に取得
+      eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', v0=non_zero_smallest_eigenvector, tol=1e-2)
       # d=2 4th minimum eigenvalue
       non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
       check = eigen_vals_after[NON_ZERO_INDEX-1]
+      # 固有値計算でエラーなく、NON_ZERO_INDEX-1番目がゼロ固有値であるかをチェック
       if check< 1e-7:
         break
     cd = non_zero_smallest_eigenvalue + C1*alpha*np.dot(np.ravel(ascend_vec), np.ravel(ascend_vec)) - non_zero_smallest_eigenvalue_after
     count +=1
   return alpha, non_zero_smallest_eigenvalue_after,len(non_zero_smallest_eigenvectors), p_after
 
-# 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）TODO:中身があっているかもう一度確認する。
+# 上昇方向の決定関数（最大化問題なので上昇方向であることに注意）
 """
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 eigenvector : eigenvector of the stiffness matrix

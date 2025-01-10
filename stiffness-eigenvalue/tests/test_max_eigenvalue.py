@@ -16,22 +16,29 @@ from stiffness_eigenvalue.framework import framework
 load_dotenv("stiffness-eigenvalue/config/.env")
 
 # 完全グラフでテスト（ライブラリを用いたもの）（time: 200s~300s）=> Backtrackの更新回数を1回に、libraryを対称行列限定のものにするとと150s~170s程度に改善全体の1/4~1/2程度の時間をArmijo条件の反復に費やしていそう。
-def test_complete_lib():
+def test_lib():
   # np.random.seed(os.getenv("SEED"))
   # 各定数
   d = int(os.getenv("DIMENSION"))
   V = int(os.getenv("NODE_NUM"))
+  k = int(os.getenv("REGULAR_DEGREE"))
   p = []; max_eigen = 0; eigen_val_box = []; alpha_box = []; multiplicity_box = [];eigen_record_box = []
   # 完全グラフの生成
-  G_comp = nx.complete_graph(V)
+  if os.getenv("GRAPH_TYPE") == "complete_graph":
+    G = nx.complete_graph(V)
+  elif os.getenv("GRAPH_TYPE") == "regular_graph":
+    G = nx.random_regular_graph(k, V)
+  else:
+    print("Invalid graph type")
+    return
   # 辺集合
-  bonds = np.array(list(G_comp.edges()))
+  bonds = np.array(list(G.edges()))
   # 3回試行して一番いいやつを選ぶ
   for i in range(int(os.getenv("MAX_EIGEN_TRIAL"))):
     # position of sites
     max_previous = max_eigen
     p_init = 2*np.random.randn(d*V).reshape(-1,d)
-    p_current, max_eigen_current, eigen_val_box_current, alpha_box_current, multiplicity_box_current = max_p_eigenvalue_lib(G_regular=G_comp, p=p_init,visual_eigen=False)
+    p_current, max_eigen_current, eigen_val_box_current, alpha_box_current, multiplicity_box_current = max_p_eigenvalue_lib(G_regular=G, p=p_init,visual_eigen=False)
     eigen_record_box.append(max_eigen_current)
     if i==0 or (i > 0 and max_eigen_current > max_previous) :
       p = p_current
@@ -94,4 +101,4 @@ def test_complete_lib_parallel():
   custom_visualize(F, label=f"opt, index value")
 
 if __name__ == "__main__":
-  test_complete_lib()
+  test_lib()
