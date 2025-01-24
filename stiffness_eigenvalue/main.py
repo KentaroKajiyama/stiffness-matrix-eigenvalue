@@ -11,7 +11,7 @@ def main():
   # 
   for max_iter_for_armijo in max_iters_for_armijo:
     is_created = False
-    for n in range(10, 2000):
+    for n in range(1000, 2000):
       try:
         if is_created:
           break
