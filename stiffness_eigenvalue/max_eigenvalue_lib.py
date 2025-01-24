@@ -10,7 +10,7 @@ import os
 from tqdm import tqdm
 from rich.progress import track
 
-load_dotenv("config/.env")
+load_dotenv("./config/.env")
 
 ##################################################
 """
