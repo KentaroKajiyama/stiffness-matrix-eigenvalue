@@ -10,7 +10,7 @@ import os
 from tqdm import tqdm
 from rich.progress import track
 
-load_dotenv("stiffness-eigenvalue/config/.env")
+load_dotenv("config/.env")
 
 ##################################################
 """
@@ -37,7 +37,7 @@ MAX_ITER_FOR_EIGENVALUE = int(os.getenv("MAX_ITER_FOR_EIGENVALUE"))
 """
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 """
-def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
+def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False, max_iter_for_armijo=None):
   start = time.time()
   global NON_ZERO_INDEX
   # 各定数
@@ -56,13 +56,13 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
   # pの正規化
   # p = p/np.linalg.norm(p)
   # pを固有ベクトル方向に移動させることで最小非ゼロ固有値の最大化を狙う
-  for i in track(range(MAX_ITER_FOR_EIGENVALUE), description="Calculating eigenvalues"):
+  for _ in track(range(MAX_ITER_FOR_EIGENVALUE), description="Calculating eigenvalues", total=MAX_ITER_FOR_ARMIJO):
     # alphaの初期化
     alpha = ALPHA
     # realizationの格納
     p_box.append(p)
     # Armijoの条件を用いて最適な更新幅を決定する。Armijoの関数内で更新まで行って
-    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = armijo(alpha, p, bonds, G_regular)
+    alpha, non_zero_smallest_eigenvalue_after, multiplicity_eigenvectors, p_after = armijo(alpha, p, bonds, G_regular, max_iter_for_armijo=max_iter_for_armijo)
     # alphaの値を記録
     alpha_box.append(alpha)
     # 固有値・固有ベクトルの記録
@@ -93,7 +93,9 @@ def max_p_eigenvalue_lib(G_regular, p, visual_eigen=False):
 p : [[p(1)_1,p(1)_2,...,p(1)_d],...,[p(n)_1,p(n)_2,...,p(n)_d]] (shape: (n,d))
 p has been normalized.
 """
-def armijo(alpha, p, bonds, G):
+def armijo(alpha, p, bonds, G, max_iter_for_armijo=None):
+  if max_iter_for_armijo:
+    MAX_ITER_FOR_ARMIJO = max_iter_for_armijo
   # 繰り返し回数の記録
   count = 0
   # Stiffness matrix

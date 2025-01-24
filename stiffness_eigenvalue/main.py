@@ -1,63 +1,36 @@
 import numpy as np
 import networkx as nx
-from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue
-from stiffness_eigenvalue.visualize import plot_eigen_vals
-
+from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
+from stiffness_eigenvalue.visualize import plot_eigen_vals_and_alpha
 # k-regular-graphで計算
 def main():
   # 各定数
-  eps = 1.0
-  ITER_EPS = 20
-  k = 5
+  k = 8
   d = 2
-  MAXITER = 100
-  # 固有値の格納
-  eigen_vals = []
-  for n in range(12,MAXITER):
-    try:
+  max_iters_for_armijo = [8, 16, 25]
+  # 
+  for max_iter_for_armijo in max_iters_for_armijo:
+    is_created = False
+    for n in range(10, 2000):
+      try:
+        if is_created:
+          break
       # k-regularグラフの生成
-      G_regular = nx.random_regular_graph(k, n)
-    except nx.NetworkXError:
-      print(f"Skipping n={n} as it does not satisfy the condition for a {k}-regular graph.")
-      continue
-    # position of sites
-    p = 5*np.random.randn(d*n).reshape(-1,d)
-    # 初期固有ベクトル
-    eigen_vec = 3*np.random.randn(d*n)
-    eigen_val = 0
-    for i in range(ITER_EPS):
-      p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_regular, p=p, eigen_vec_0= eigen_vec, eps=eps)
-      eps /= 2
-    eigen_vals.append(eigen_val)
-  plot_eigen_vals(eigen_vals)
-  
-  # k-complete-graphで計算
-def test():
-  # 各定数
-  eps = 1.0
-  ITER_EPS = 20
-  k = 5
-  d = 2
-  MAXITER = 10**6
-  # 固有値の格納
-  eigen_vals = []
-  for n in range(12,MAXITER,100):
-    try:
-      # completeグラフの生成
-      G_regular = nx.complete_graph(n)
-    except nx.NetworkXError:
-      print(f"Skipping n={n} as it does not satisfy the condition for a {k}-regular graph.")
-      continue
-    # position of sites
-    p = 5*np.random.randn(d*n).reshape(-1,d)
-    # 初期固有ベクトル
-    eigen_vec = 3*np.random.randn(d*n)
-    eigen_val = 0
-    for i in range(ITER_EPS):
-      p, eigen_val, eigen_vec = max_p_eigenvalue(G_regular=G_regular, p=p, eigen_vec_0= eigen_vec, eps=eps)
-      eps /= 2
-    eigen_vals.append(eigen_val)
-  plot_eigen_vals(eigen_vals)
+        G_regular = nx.random_regular_graph(k, n)
+        # position of sites
+        p = 5*np.random.randn(d*n).reshape(-1,d)
+        # 固有値計算
+        p_optimized, max_eigenvalue, eigen_val_box, alpha_box, multiplicity_box = max_p_eigenvalue_lib(G_regular=G_regular, p=p, max_iter_for_armijo=max_iter_for_armijo)
+        # 画像の prefix 
+        save_prefix = f"d={d}_k={k}_n={n}_alpha-iter={max_iter_for_armijo}"
+        plot_eigen_vals_and_alpha(eigen_val_box, alpha_box, multiplicity_box, is_save=True, save_prefix=save_prefix)
+        is_created = True
+        print(f"n = {n}")
+      except nx.NetworkXError as e:
+        print(f"Skipping n={n} as it does not satisfy the condition for a {k}-regular graph.")
+        print(e)
+        continue
+    
   
 if __name__ == "__main__":
-  test()
+  main()
