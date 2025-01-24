@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
-from stiffness_eigenvalue.max_eigenvalue_lib import max_p_eigenvalue_lib
-from stiffness_eigenvalue.visualize import plot_eigen_vals_and_alpha
+from max_eigenvalue_lib import max_p_eigenvalue_lib
+from visualize import plot_eigen_vals_and_alpha
 # k-regular-graphで計算
 def main():
   # 各定数

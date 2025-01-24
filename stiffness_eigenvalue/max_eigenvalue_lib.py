@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.sparse.linalg import eigsh
 import rigidpy as rp
-from stiffness_eigenvalue.framework import stiffness_matrix_sparce
-from stiffness_eigenvalue.visualize import custom_visualize, plot_eigen_vals_and_alpha
+from framework import stiffness_matrix_sparce
+from visualize import custom_visualize, plot_eigen_vals_and_alpha
 import math
 import time
 from dotenv import load_dotenv
