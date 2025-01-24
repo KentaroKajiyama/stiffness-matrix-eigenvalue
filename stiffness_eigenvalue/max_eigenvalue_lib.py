@@ -103,7 +103,7 @@ def armijo(alpha, p, bonds, G):
   # 固有値の個数の1/3を取得してきて重複がないか後にチェックする
   while True:
     # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
-    eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-2)
+    eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-5, ncv=20)
     non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
     check = eigen_vals[NON_ZERO_INDEX-1]
     if check< 1e-5:
@@ -132,7 +132,7 @@ def armijo(alpha, p, bonds, G):
   while True:
     # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
     # Eigenvalues 値が小さい順に取得
-    eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', v0=non_zero_smallest_eigenvector, tol=1e-2)
+    eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
     # d=2 4th minimum eigenvalue
     non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
     check = eigen_vals_after[NON_ZERO_INDEX-1]
@@ -152,7 +152,7 @@ def armijo(alpha, p, bonds, G):
     while True:
       # TODO: ここで固有値の計算が収束しない場合があるので、その場合の処理を考える
       # Eigenvalues 値が小さい順に取得
-      eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', v0=non_zero_smallest_eigenvector, tol=1e-2)
+      eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
       # d=2 4th minimum eigenvalue
       non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
       check = eigen_vals_after[NON_ZERO_INDEX-1]

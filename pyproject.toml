@@ -18,7 +18,9 @@ tqdm = "^4.66.5"
 python-dotenv = "^1.0.1"
 rich = "^13.9.4"
 
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = "stiffness_eigenvalue.main:main"

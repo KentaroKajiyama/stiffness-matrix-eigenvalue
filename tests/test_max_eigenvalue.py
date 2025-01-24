@@ -33,7 +33,7 @@ def test_lib():
     return
   # 辺集合
   bonds = np.array(list(G.edges()))
-  # 3回試行して一番いいやつを選ぶ
+  # MAX_EIGEN_TRIAL 回試行して一番いいやつを選ぶ
   for i in range(int(os.getenv("MAX_EIGEN_TRIAL"))):
     # position of sites
     max_previous = max_eigen
