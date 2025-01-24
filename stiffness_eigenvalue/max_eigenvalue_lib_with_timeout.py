@@ -99,7 +99,7 @@ p has been normalized.
 def timeout_handler(signum, frame):
   raise TimeoutError
 
-def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60):
+def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=None):
   if max_iter_for_armijo:
     MAX_ITER_FOR_ARMIJO = max_iter_for_armijo
   
@@ -178,7 +178,10 @@ def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60):
       count += 1
     
   except TimeoutError:
-    print("Timeout occurred or eigenvalue computation failed.")
+    index_text=""
+    if index:
+      index_text = "index:"+index+"."
+    print("Timeout occurred or eigenvalue computation failed."+index_text)
     alpha = 0
     non_zero_smallest_eigenvalue_after = 0
     non_zero_smallest_eigenvectors = []
