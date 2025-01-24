@@ -99,7 +99,7 @@ p has been normalized.
 def timeout_handler(signum, frame):
   raise TimeoutError
 
-def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=None):
+def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60):
   if max_iter_for_armijo:
     MAX_ITER_FOR_ARMIJO = max_iter_for_armijo
   
@@ -115,8 +115,13 @@ def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=N
     signal.alarm(timeout_sec)  # タイムアウト設定
     
     while True:
-      eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-5, ncv=20)
-      signal.alarm(0)  # タイムアウト解除
+      try:
+        eigen_vals, eigen_vecs = eigsh(L, k=8, which='SM', tol=1e-5, ncv=20)
+        signal.alarm(0)  # タイムアウト解除
+      except Exception as e:
+        print(f"Eigenvalue computation failed: {e}")
+        raise TimeoutError
+      
       non_zero_smallest_eigenvalue = eigen_vals[NON_ZERO_INDEX]
       check = eigen_vals[NON_ZERO_INDEX-1]
       if check < 1e-5:
@@ -136,8 +141,13 @@ def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=N
     
     signal.alarm(timeout_sec)  # タイムアウト設定
     while True:
-      eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
-      signal.alarm(0)  # タイムアウト解除
+      try:
+        eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+        signal.alarm(0)  # タイムアウト解除
+      except Exception as e:
+        print(f"Eigenvalue computation failed: {e}")
+        raise TimeoutError
+      
       non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
       check = eigen_vals_after[NON_ZERO_INDEX-1]
       if check < 1e-7:
@@ -152,8 +162,13 @@ def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=N
       
       signal.alarm(timeout_sec)  # タイムアウト設定
       while True:
-        eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
-        signal.alarm(0)  # タイムアウト解除
+        try:
+          eigen_vals_after, _ = eigsh(L_after, NON_ZERO_INDEX+1, which='SM', tol=1e-5, ncv=20)
+          signal.alarm(0)  # タイムアウト解除
+        except Exception as e:
+          print(f"Eigenvalue computation failed: {e}")
+          raise TimeoutError
+        
         non_zero_smallest_eigenvalue_after = eigen_vals_after[NON_ZERO_INDEX]
         check = eigen_vals_after[NON_ZERO_INDEX-1]
         if check < 1e-7:
@@ -163,7 +178,7 @@ def armijo(alpha, p, bonds, G, max_iter_for_armijo=None, timeout_sec=60, index=N
       count += 1
     
   except TimeoutError:
-    print("Timeout occurred while computing eigenvalues. index:{i}")
+    print("Timeout occurred or eigenvalue computation failed.")
     alpha = 0
     non_zero_smallest_eigenvalue_after = 0
     non_zero_smallest_eigenvectors = []
