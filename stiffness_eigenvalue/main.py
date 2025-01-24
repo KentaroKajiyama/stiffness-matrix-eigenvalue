@@ -1,6 +1,6 @@
 import numpy as np
 import networkx as nx
-from max_eigenvalue_lib import max_p_eigenvalue_lib
+from max_eigenvalue_lib_with_timeout import max_p_eigenvalue_lib
 from visualize import plot_eigen_vals_and_alpha
 # k-regular-graphで計算
 def main():
